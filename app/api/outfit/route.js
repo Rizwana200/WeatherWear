@@ -12,6 +12,211 @@ export async function POST(request) {
 
     const body = await request.json();
 
+    // ============================================================
+    // EXPLORE OUTFITS MODE
+    // Separate from the existing AI assistant and comparison logic.
+    // ============================================================
+    if (body.mode === "explore-outfits") {
+      const {
+        gender,
+        city,
+        temperature,
+        condition,
+        rainChance,
+        precipitationMm,
+      } = body;
+
+      if (
+        !["Men", "Women"].includes(gender) ||
+        typeof temperature !== "number" ||
+        !Number.isFinite(temperature) ||
+        typeof condition !== "string" ||
+        typeof rainChance !== "number" ||
+        !Number.isFinite(rainChance)
+      ) {
+        return Response.json(
+          { error: "Valid gender and weather details are required." },
+          { status: 400 }
+        );
+      }
+
+      const outfitPrompt = `
+You are WeatherWear, a practical personal fashion stylist.
+
+Generate exactly 6 distinct clothing recommendations for the selected
+gender based on the supplied weather.
+
+Weather information:
+- Gender: ${gender}
+- Location: ${String(city || "Unknown").slice(0, 150)}
+- Temperature: ${temperature}°C
+- Weather condition: ${condition.slice(0, 100)}
+- Rain probability: ${rainChance}%
+- Precipitation: ${
+        typeof precipitationMm === "number" &&
+        Number.isFinite(precipitationMm)
+          ? `${precipitationMm} mm`
+          : "Unknown"
+      }
+
+Return valid JSON only, using this structure:
+{
+  "outfits": [
+    {
+      "name": "Item name",
+      "category": "tops",
+      "detail": "Brief explanation of why this item suits the weather.",
+      "imageKeywords": "specific real-world fashion photo search description"
+    }
+  ]
+}
+
+Rules:
+1. Recommend clothing specifically for ${gender}. Never mix genders.
+2. Return exactly 6 distinct, useful recommendations.
+3. Choose suitable categories from:
+   tops, shirts, trousers, jeans, jackets, footwear, accessories.
+4. Select items based on the supplied weather, not a generic outfit list.
+5. Hot weather: breathable shirts, lightweight tops, cotton clothing,
+   comfortable trousers and suitable lightweight footwear.
+6. Rainy weather: raincoats, water-resistant jackets, quick-drying
+   clothing and footwear with grip suitable for wet surfaces.
+7. Cold weather: sweaters, warm layers, jackets and closed footwear.
+8. Mild weather: comfortable everyday tops, shirts, jeans, trousers
+   and appropriate footwear.
+9. Do not recommend heavy jackets in hot weather without a reason.
+10. Do not recommend ordinary canvas shoes as rain protection.
+11. Include a balanced variety of clothing categories where appropriate.
+12. Each detail must be concise and under 25 words.
+13. imageKeywords must describe a realistic photographic image of the
+    specific item for the selected gender.
+14. Do not include prices, store names, shopping links or markdown.
+15. Do not invent weather measurements.
+      `.trim();
+
+      const outfitResponse = await fetch(
+        "https://api.deepseek.com/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a weather-aware fashion recommendation engine. Return only valid JSON.",
+              },
+              {
+                role: "user",
+                content: outfitPrompt,
+              },
+            ],
+            response_format: { type: "json_object" },
+            max_tokens: 1400,
+            temperature: 0.4,
+          }),
+        }
+      );
+
+      if (!outfitResponse.ok) {
+        const errorDetails = await outfitResponse.text();
+
+        console.error(
+          "DeepSeek outfit request failed:",
+          outfitResponse.status,
+          errorDetails.slice(0, 500)
+        );
+
+        return Response.json(
+          {
+            error:
+              outfitResponse.status === 401
+                ? "DeepSeek rejected the API key. Check DEEPSEEK_API_KEY."
+                : outfitResponse.status === 429
+                  ? "DeepSeek rate limit reached. Please try again later."
+                  : "Unable to generate outfit ideas right now. Please try again.",
+          },
+          { status: 502 }
+        );
+      }
+
+      const outfitData = await outfitResponse.json();
+      const outfitContent =
+        outfitData.choices?.[0]?.message?.content?.trim();
+
+      if (!outfitContent) {
+        return Response.json(
+          { error: "The AI did not return outfit ideas. Please try again." },
+          { status: 502 }
+        );
+      }
+
+      let parsedOutfits;
+
+      try {
+        parsedOutfits = JSON.parse(outfitContent);
+      } catch {
+        return Response.json(
+          { error: "The AI returned an invalid outfit response. Please retry." },
+          { status: 502 }
+        );
+      }
+
+      const allowedCategories = new Set([
+        "tops",
+        "shirts",
+        "trousers",
+        "jeans",
+        "jackets",
+        "footwear",
+        "accessories",
+      ]);
+
+      const outfits = Array.isArray(parsedOutfits.outfits)
+        ? parsedOutfits.outfits
+            .filter(
+              (item) =>
+                item &&
+                typeof item.name === "string" &&
+                typeof item.detail === "string" &&
+                typeof item.imageKeywords === "string" &&
+                typeof item.category === "string"
+            )
+            .slice(0, 6)
+            .map((item) => ({
+              name: item.name.slice(0, 100),
+              category: allowedCategories.has(
+                item.category.toLowerCase()
+              )
+                ? item.category.toLowerCase()
+                : "tops",
+              detail: item.detail.slice(0, 250),
+              imageKeywords: item.imageKeywords.slice(0, 200),
+            }))
+        : [];
+
+      if (outfits.length === 0) {
+        return Response.json(
+          { error: "No valid outfit ideas were generated. Please try again." },
+          { status: 502 }
+        );
+      }
+
+      return Response.json({
+        gender,
+        outfits,
+      });
+    }
+
+    // ============================================================
+    // EXISTING AI ASSISTANT AND WEATHER COMPARISON
+    // Preserved from your original route.
+    // ============================================================
+
     const {
       city,
       timezone,
@@ -49,7 +254,9 @@ export async function POST(request) {
         ),
         condition: String(day?.condition ?? "Unknown"),
         rainProbability: asNumber(
-          day?.rainProbability ?? day?.rainChance ?? day?.precipitationProbability
+          day?.rainProbability ??
+            day?.rainChance ??
+            day?.precipitationProbability
         ),
       };
     }
@@ -223,7 +430,9 @@ export async function POST(request) {
 
       if (allowedTypes.includes(historicalWeather.dataType)) {
         historicalRecord = {
-          source: String(historicalWeather.source ?? "Unknown").slice(0, 150),
+          source: String(
+            historicalWeather.source ?? "Unknown"
+          ).slice(0, 150),
           dataType: historicalWeather.dataType,
           date: String(historicalWeather.date ?? ""),
           timezone: String(

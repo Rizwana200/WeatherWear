@@ -7,53 +7,37 @@ const WEATHER_KEY = "weatherwear-weather";
 const WISHLIST_KEY = "weatherwear-wishlist";
 
 const weatherSearches = {
-  Hot: "summer cotton tops shirts shorts dresses",
-  Warm: "casual tops shirts trousers dresses",
-  Mild: "casual shirts trousers skirts kurtis",
-  Cool: "hoodies jeans cardigans jackets",
-  Cold: "sweaters winter jackets warm outfits",
-  Rainy: "raincoats waterproof jackets rain footwear",
+  Hot: "summer lightweight breathable cotton summer outfits",
+  Warm: "lightweight everyday casual breathable clothing",
+  Mild: "comfortable versatile everyday outfits",
+  Rainy: "raincoats waterproof jackets quick drying clothes rain footwear",
+  Cool: "light jackets cardigans hoodies jeans layered outfits",
+  Cold: "winter sweaters woollen cardigans warm jackets shawls thermal clothing",
 };
 
 const climateTerms = {
-  Hot: "summer lightweight breathable",
-  Warm: "everyday casual comfortable",
-  Mild: "versatile everyday",
-  Cool: "light warm layers",
-  Cold: "winter warm cozy",
-  Rainy: "rain waterproof weather ready",
+  Hot: "summer lightweight breathable cotton",
+  Warm: "lightweight comfortable everyday",
+  Mild: "versatile comfortable everyday",
+  Rainy: "rain resistant waterproof quick drying",
+  Cool: "layering light warm comfortable",
+  Cold: "winter warm woollen cozy insulated",
 };
 
 const categorySearches = {
   "Tops & Tunics": "tops tunics blouses",
-  Shirts: "casual shirts",
+  Shirts: "shirts",
   "Kurtis & Kurtas": "kurtis kurtas",
-  Dresses: "casual dresses gowns",
-  Sarees: "sarees",
+  Dresses: "dresses gowns frocks",
+  Sarees: "sarees cotton sarees",
   "Ethnic Wear": "ethnic wear salwar suits lehengas",
   "Jeans & Trousers": "jeans trousers pants leggings",
   Skirts: "skirts",
-  "Jackets & Coats": "jackets coats raincoats blazers",
-  "Sweaters & Hoodies": "sweaters hoodies cardigans",
+  "Jackets & Coats": "jackets coats raincoats winter jackets",
+  "Sweaters & Hoodies": "sweaters hoodies cardigans pullovers sweatshirts",
   Footwear: "shoes sandals sneakers boots slippers",
-  Accessories: "bags caps scarves belts",
+  Accessories: "bags caps scarves shawls belts",
 };
-
-const categories = [
-  "All",
-  "Tops & Tunics",
-  "Shirts",
-  "Kurtis & Kurtas",
-  "Dresses",
-  "Sarees",
-  "Ethnic Wear",
-  "Jeans & Trousers",
-  "Skirts",
-  "Jackets & Coats",
-  "Sweaters & Hoodies",
-  "Footwear",
-  "Accessories",
-];
 
 const genderOptions = [
   { name: "Everyone", emoji: "🛍️" },
@@ -73,44 +57,162 @@ const weatherOptions = [
 const weatherDetails = {
   Hot: {
     emoji: "☀️",
-    title: "Summer styles",
-    description: "Breathable fabrics and lightweight outfits.",
+    title: "Summer essentials",
+    description: "Lightweight styles, breathable fabrics and sunny-day favourites.",
     color: "from-orange-100 to-amber-50",
   },
   Warm: {
     emoji: "🌤️",
-    title: "Everyday favourites",
-    description: "Comfortable outfits for everyday adventures.",
+    title: "Warm-weather favourites",
+    description: "Lightweight clothing and comfortable everyday styles.",
     color: "from-pink-100 to-orange-50",
   },
   Mild: {
     emoji: "🌿",
-    title: "Effortless everyday wear",
-    description: "Versatile outfits for comfortable days.",
+    title: "Everyday essentials",
+    description: "Versatile clothing for comfortable days.",
     color: "from-emerald-100 to-lime-50",
   },
   Rainy: {
     emoji: "🌧️",
-    title: "Rain-ready fashion",
-    description: "Explore raincoats, jackets and practical footwear.",
+    title: "Rain-ready collection",
+    description: "Raincoats, practical layers and weather-ready footwear.",
     color: "from-sky-100 to-indigo-50",
   },
   Cool: {
     emoji: "🍃",
     title: "Comfortable layers",
-    description: "Hoodies, jeans and lightweight jackets.",
+    description: "Cardigans, hoodies, light jackets and easy layering.",
     color: "from-violet-100 to-purple-50",
   },
   Cold: {
     emoji: "❄️",
-    title: "Cozy winter looks",
-    description: "Sweaters, jackets and warm outfits.",
+    title: "Winter wardrobe",
+    description: "Cozy sweaters, warm jackets, shawls and winter essentials.",
     color: "from-blue-100 to-cyan-50",
   },
 };
 
+const genderCategories = {
+  Women: [
+    "All",
+    "Tops & Tunics",
+    "Kurtis & Kurtas",
+    "Dresses",
+    "Sarees",
+    "Ethnic Wear",
+    "Jeans & Trousers",
+    "Skirts",
+    "Jackets & Coats",
+    "Sweaters & Hoodies",
+    "Footwear",
+    "Accessories",
+  ],
+  Men: [
+    "All",
+    "Shirts",
+    "Tops & Tunics",
+    "Jeans & Trousers",
+    "Jackets & Coats",
+    "Sweaters & Hoodies",
+    "Footwear",
+    "Accessories",
+  ],
+  Everyone: [
+    "All",
+    "Tops & Tunics",
+    "Shirts",
+    "Kurtis & Kurtas",
+    "Dresses",
+    "Sarees",
+    "Ethnic Wear",
+    "Jeans & Trousers",
+    "Skirts",
+    "Jackets & Coats",
+    "Sweaters & Hoodies",
+    "Footwear",
+    "Accessories",
+  ],
+};
+
+const weatherCategories = {
+  Hot: [
+    "Tops & Tunics",
+    "Shirts",
+    "Kurtis & Kurtas",
+    "Dresses",
+    "Sarees",
+    "Ethnic Wear",
+    "Jeans & Trousers",
+    "Skirts",
+    "Footwear",
+    "Accessories",
+  ],
+  Warm: [
+    "Tops & Tunics",
+    "Shirts",
+    "Kurtis & Kurtas",
+    "Dresses",
+    "Sarees",
+    "Ethnic Wear",
+    "Jeans & Trousers",
+    "Skirts",
+    "Footwear",
+    "Accessories",
+  ],
+  Mild: [
+    "Tops & Tunics",
+    "Shirts",
+    "Kurtis & Kurtas",
+    "Dresses",
+    "Sarees",
+    "Ethnic Wear",
+    "Jeans & Trousers",
+    "Skirts",
+    "Jackets & Coats",
+    "Footwear",
+    "Accessories",
+  ],
+  Rainy: [
+    "Tops & Tunics",
+    "Shirts",
+    "Dresses",
+    "Jeans & Trousers",
+    "Jackets & Coats",
+    "Footwear",
+    "Accessories",
+  ],
+  Cool: [
+    "Tops & Tunics",
+    "Shirts",
+    "Kurtis & Kurtas",
+    "Dresses",
+    "Sarees",
+    "Ethnic Wear",
+    "Jeans & Trousers",
+    "Jackets & Coats",
+    "Sweaters & Hoodies",
+    "Footwear",
+    "Accessories",
+  ],
+  Cold: [
+    "Tops & Tunics",
+    "Shirts",
+    "Kurtis & Kurtas",
+    "Dresses",
+    "Sarees",
+    "Ethnic Wear",
+    "Jeans & Trousers",
+    "Jackets & Coats",
+    "Sweaters & Hoodies",
+    "Footwear",
+    "Accessories",
+  ],
+};
+
 function detectClimate(weather) {
   const current = weather?.current;
+
   if (!current) return null;
 
   const temperature = Number(current.temperature_2m);
@@ -147,32 +249,46 @@ function detectClimate(weather) {
 
 function readWishlist() {
   try {
-    const saved = JSON.parse(
-      localStorage.getItem(WISHLIST_KEY) || "[]"
-    );
+    const saved = JSON.parse(localStorage.getItem(WISHLIST_KEY) || "[]");
     return Array.isArray(saved) ? saved : [];
   } catch {
     return [];
   }
 }
 
+function getProductId(product) {
+  return String(product?.id || product?.url || "");
+}
+
 function matchesGender(product, gender) {
-  const text =
-    `${product.title || ""} ${product.category || ""}`.toLowerCase();
+  if (gender === "Everyone") return true;
+
+  const explicitGender = String(
+    product.gender || product.targetGender || ""
+  ).toLowerCase();
+
+  if (explicitGender) {
+    const isMen = /^(men|male|boy|boys)$/.test(explicitGender);
+    const isWomen = /^(women|female|woman|girl|girls)$/.test(explicitGender);
+
+    if (gender === "Women" && isMen) return false;
+    if (gender === "Men" && isWomen) return false;
+
+    if (isMen || isWomen) return true;
+  }
+
+  const text = `${product.title || ""} ${product.category || ""}`.toLowerCase();
 
   const explicitlyMen =
     /\b(men|mens|men's|boys|boy's|male|menswear)\b/i.test(text);
 
   const explicitlyWomen =
-    /\b(women|womens|women's|ladies|lady|girls|girl's|female)\b/i.test(text);
+    /\b(women|womens|women's|ladies|lady|girls|girl's|female|womenswear)\b/i.test(
+      text
+    );
 
-  if (gender === "Women" && explicitlyMen && !explicitlyWomen) {
-    return false;
-  }
-
-  if (gender === "Men" && explicitlyWomen && !explicitlyMen) {
-    return false;
-  }
+  if (gender === "Women" && explicitlyMen && !explicitlyWomen) return false;
+  if (gender === "Men" && explicitlyWomen && !explicitlyMen) return false;
 
   return true;
 }
@@ -180,30 +296,35 @@ function matchesGender(product, gender) {
 function matchesCategory(product, selectedCategory) {
   if (selectedCategory === "All") return true;
 
-  const text =
-    `${product.title || ""} ${product.category || ""}`.toLowerCase();
+  const text = `${product.title || ""} ${product.category || ""}`.toLowerCase();
 
   const rules = {
-    "Tops & Tunics": /\b(top|tops|tunic|tunics|blouse|blouses|tee|tees)\b/,
+    "Tops & Tunics":
+      /\b(top|tops|tunic|tunics|blouse|blouses|tee|tees|t-shirt|t-shirts)\b/,
     Shirts: /\b(shirt|shirts)\b/,
     "Kurtis & Kurtas": /\b(kurti|kurtis|kurta|kurtas)\b/,
     Dresses: /\b(dress|dresses|gown|gowns|frock|frocks|maxi)\b/,
     Sarees: /\b(saree|sarees|sari|saris)\b/,
-    "Ethnic Wear": /\b(ethnic|salwar|lehenga|anarkali|churidar)\b/,
-    "Jeans & Trousers": /\b(jeans|trouser|trousers|pants|leggings|joggers)\b/,
+    "Ethnic Wear":
+      /\b(ethnic|salwar|lehenga|anarkali|churidar|suit set)\b/,
+    "Jeans & Trousers":
+      /\b(jeans|trouser|trousers|pants|leggings|joggers)\b/,
     Skirts: /\b(skirt|skirts)\b/,
-    "Jackets & Coats": /\b(jacket|jackets|coat|coats|raincoat|blazer|blazers)\b/,
-    "Sweaters & Hoodies": /\b(sweater|sweaters|hoodie|hoodies|cardigan|cardigans|pullover)\b/,
-    Footwear: /\b(shoe|shoes|sandal|sandals|sneaker|sneakers|slipper|slippers|footwear|boots|boot)\b/,
-    Accessories: /\b(bag|bags|scarf|scarves|belt|belts|cap|caps|hat|hats|accessory|accessories)\b/,
+    "Jackets & Coats":
+      /\b(jacket|jackets|coat|coats|raincoat|raincoats|blazer|blazers|windcheater)\b/,
+    "Sweaters & Hoodies":
+      /\b(sweater|sweaters|hoodie|hoodies|cardigan|cardigans|pullover|sweatshirt|sweatshirts)\b/,
+    Footwear:
+      /\b(shoe|shoes|sandal|sandals|sneaker|sneakers|slipper|slippers|footwear|boots|boot)\b/,
+    Accessories:
+      /\b(bag|bags|scarf|scarves|shawl|shawls|belt|belts|cap|caps|hat|hats|accessory|accessories)\b/,
   };
 
-  return rules[selectedCategory]?.test(text) ?? true;
+  return rules[selectedCategory]?.test(text) ?? false;
 }
 
 export default function StorePage() {
   const [weather, setWeather] = useState(null);
-  const [location, setLocation] = useState("");
   const [climate, setClimate] = useState("Warm");
 
   const [gender, setGender] = useState("Everyone");
@@ -218,10 +339,17 @@ export default function StorePage() {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
 
-  const current = weather?.current;
   const weatherInfo = weatherDetails[climate] || weatherDetails.Warm;
 
-  // Restore weather and wishlist from the existing WeatherWear app.
+  const availableCategories = useMemo(() => {
+    const genderMenu = genderCategories[gender] || genderCategories.Everyone;
+    const weatherMenu = weatherCategories[climate] || weatherCategories.Warm;
+
+    return genderMenu.filter(
+      (item) => item === "All" || weatherMenu.includes(item)
+    );
+  }, [gender, climate]);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(WEATHER_KEY);
@@ -231,17 +359,6 @@ export default function StorePage() {
         const savedWeather = saved?.weather || null;
 
         setWeather(savedWeather);
-
-        setLocation(
-          saved?.location ||
-            [
-              saved?.place?.name,
-              saved?.place?.admin1,
-              saved?.place?.country,
-            ]
-              .filter(Boolean)
-              .join(", ")
-        );
 
         const detected = detectClimate(savedWeather);
         if (detected) setClimate(detected);
@@ -255,23 +372,22 @@ export default function StorePage() {
     }
   }, []);
 
-  // Fetch actual Meesho listings based on weather, gender and category.
   const loadProducts = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const selectedGender =
+      const selectedGenders =
         gender === "Everyone" ? ["Women", "Men"] : [gender];
 
       const searchBase =
         category === "All"
-          ? weatherSearches[climate] || weatherSearches.Warm
-          : `${categorySearches[category]} ${climateTerms[climate] || ""}`;
+          ? weatherSearches[climate]
+          : `${categorySearches[category]} ${climateTerms[climate]}`;
 
       const results = await Promise.all(
-        selectedGender.map(async (selected) => {
-          const query = `${selected.toLowerCase()} ${searchBase}`;
+        selectedGenders.map(async (selectedGender) => {
+          const query = `${selectedGender.toLowerCase()} ${searchBase}`;
 
           const response = await fetch(
             `/api/products?q=${encodeURIComponent(query)}`,
@@ -284,13 +400,10 @@ export default function StorePage() {
             throw new Error(result.error || "Product search failed.");
           }
 
-          return Array.isArray(result.products)
-            ? result.products
-            : [];
+          return Array.isArray(result.products) ? result.products : [];
         })
       );
 
-      // Remove duplicates and apply gender/category checks.
       const unique = new Map();
 
       results.flat().forEach((product) => {
@@ -298,16 +411,14 @@ export default function StorePage() {
         if (!matchesGender(product, gender)) return;
         if (!matchesCategory(product, category)) return;
 
-        const id = String(product.id || product.url);
-        if (!unique.has(id)) unique.set(id, product);
+        const id = getProductId(product);
+        if (id && !unique.has(id)) unique.set(id, product);
       });
 
       setProducts(Array.from(unique.values()));
     } catch (err) {
       setProducts([]);
-      setError(
-        err.message || "Could not load products from Meesho."
-      );
+      setError(err.message || "Could not load products. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -317,20 +428,32 @@ export default function StorePage() {
     if (ready) loadProducts();
   }, [ready, loadProducts]);
 
+  const selectClimate = (nextClimate) => {
+    setClimate(nextClimate);
+    setCategory("All");
+    setSearch("");
+    setWishlistOnly(false);
+  };
+
+  const selectGender = (nextGender) => {
+    setGender(nextGender);
+    setCategory("All");
+    setSearch("");
+    setWishlistOnly(false);
+  };
+
   const toggleWishlist = (product) => {
     setWishlist((previous) => {
-      const exists = previous.some(
-        (item) => String(item.id) === String(product.id)
-      );
+      const productId = getProductId(product);
+
+      const exists = previous.some((item) => getProductId(item) === productId);
 
       const updated = exists
-        ? previous.filter(
-            (item) => String(item.id) !== String(product.id)
-          )
+        ? previous.filter((item) => getProductId(item) !== productId)
         : [
             ...previous,
             {
-              id: product.id,
+              id: product.id || product.url,
               title: product.title,
               image: product.image,
               price: product.price,
@@ -343,10 +466,7 @@ export default function StorePage() {
           ];
 
       try {
-        localStorage.setItem(
-          WISHLIST_KEY,
-          JSON.stringify(updated)
-        );
+        localStorage.setItem(WISHLIST_KEY, JSON.stringify(updated));
       } catch (err) {
         console.error("Could not save wishlist:", err);
       }
@@ -357,13 +477,11 @@ export default function StorePage() {
 
   const displayedProducts = useMemo(() => {
     let filtered = products.filter((product) => {
-      const text =
-        `${product.title || ""} ${product.category || ""}`.toLowerCase();
-
+      const text = `${product.title || ""} ${product.category || ""}`.toLowerCase();
       const matchesSearch = text.includes(search.trim().toLowerCase());
 
       const isSaved = wishlist.some(
-        (item) => String(item.id) === String(product.id)
+        (item) => getProductId(item) === getProductId(product)
       );
 
       return matchesSearch && (!wishlistOnly || isSaved);
@@ -386,32 +504,26 @@ export default function StorePage() {
     return filtered;
   }, [products, search, wishlist, wishlistOnly, sortBy]);
 
-  const openMeeshoSearch = () => {
-    const query =
-      search.trim() ||
-      `${gender === "Everyone" ? "" : gender.toLowerCase() + " "}${category === "All" ? weatherSearches[climate] : categorySearches[category]}`;
-
-    window.open(
-      `https://www.meesho.com/search?q=${encodeURIComponent(query)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
+  const clearFilters = () => {
+    setSearch("");
+    setCategory("All");
+    setWishlistOnly(false);
+    setSortBy("recommended");
   };
 
   return (
     <main className="min-h-screen bg-[#fffaf7] text-slate-900">
-      {/* Store heading */}
-      <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="flex flex-wrap items-center justify-between gap-5">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[.2em] text-orange-500">
-              Weather meets style
+            <p className="text-xs font-extrabold uppercase tracking-[.22em] text-orange-500">
+              YOUR WEATHER. YOUR STYLE.
             </p>
-            <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">
+            <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
               The <span className="text-orange-500">WeatherWear</span> Store
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Real fashion for every forecast, every style, everyone.
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+              Discover clothing picked for the weather and the way you like to dress.
             </p>
           </div>
 
@@ -425,112 +537,126 @@ export default function StorePage() {
           >
             ♥ Wishlist ({wishlist.length})
           </button>
-        </div>
+        </header>
 
-        {/* Current weather strip */}
+        {/* Weather banner without a location box or Meesho search button */}
         <section
-          className={`mt-6 rounded-3xl border border-white bg-gradient-to-r ${weatherInfo.color} p-5 shadow-sm sm:p-6`}
+          className={`mt-7 rounded-3xl border border-white bg-gradient-to-r ${weatherInfo.color} p-6 shadow-sm sm:p-8`}
         >
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-3xl shadow-sm">
-                {weatherInfo.emoji}
-              </span>
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-widest text-slate-500">
-                  Shopping for {climate.toLowerCase()} weather
-                </p>
-                <h2 className="mt-1 text-xl font-black">
-                  {weatherInfo.title}
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  {weatherInfo.description}
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/80 bg-white/75 px-5 py-3">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                {location || "Your forecast"}
+          <div className="flex items-center gap-4">
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/80 text-4xl shadow-sm">
+              {weatherInfo.emoji}
+            </span>
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[.16em] text-slate-500">
+                THE WEATHER EDIT
               </p>
-              <p className="mt-1 text-2xl font-black">
-                {current?.temperature_2m != null
-                  ? `${Math.round(current.temperature_2m)}°C`
-                  : "WeatherWear"}
+              <h2 className="mt-1 text-2xl font-black sm:text-3xl">
+                {weatherInfo.title}
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                {weatherInfo.description}
               </p>
-              {current?.relative_humidity_2m != null && (
-                <p className="text-xs text-slate-500">
-                  {current.relative_humidity_2m}% humidity
-                </p>
-              )}
             </div>
           </div>
         </section>
 
-        {/* Gender selection */}
-        <section className="mt-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-black">Who are you shopping for?</h2>
-            <span className="text-xs font-semibold text-slate-400">
-              Choose your collection
-            </span>
-          </div>
+        <section className="mt-9">
+          <p className="text-xs font-extrabold uppercase tracking-[.16em] text-slate-400">
+            STEP 1
+          </p>
+          <h2 className="mt-1 text-xl font-black">
+            Who are you shopping for?
+          </h2>
 
-          <div className="mt-3 flex flex-wrap gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {genderOptions.map((option) => (
               <button
                 key={option.name}
-                onClick={() => {
-                  setGender(option.name);
-                  setWishlistOnly(false);
-                }}
-                className={`flex items-center gap-2 rounded-2xl border px-5 py-3 text-sm font-extrabold transition ${
+                onClick={() => selectGender(option.name)}
+                className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
                   gender === option.name
-                    ? "border-violet-600 bg-violet-600 text-white shadow-lg shadow-violet-100"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-violet-300 hover:bg-violet-50"
+                    ? "border-violet-600 bg-violet-50 ring-2 ring-violet-100"
+                    : "border-slate-200 bg-white hover:border-violet-300"
                 }`}
               >
-                <span className="text-lg">{option.emoji}</span>
-                {option.name}
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-2xl shadow-sm">
+                  {option.emoji}
+                </span>
+                <span>
+                  <span className="block text-sm font-extrabold">
+                    {option.name}
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {option.name === "Everyone"
+                      ? "Explore all collections"
+                      : option.name === "Women"
+                        ? "Women's fashion and styles"
+                        : "Men's fashion and essentials"}
+                  </span>
+                </span>
+                {gender === option.name && (
+                  <span className="ml-auto text-lg font-black text-violet-600">✓</span>
+                )}
               </button>
             ))}
           </div>
         </section>
 
-        {/* Weather filters */}
-        <section className="mt-8">
-          <h2 className="text-lg font-black">Shop by weather</h2>
-          <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+        <section className="mt-9">
+          <p className="text-xs font-extrabold uppercase tracking-[.16em] text-slate-400">
+            STEP 2
+          </p>
+          <h2 className="mt-1 text-xl font-black">Choose your weather</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Your selection updates the collection and clothing categories.
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {weatherOptions.map((option) => (
               <button
                 key={option.name}
-                onClick={() => {
-                  setClimate(option.name);
-                  setWishlistOnly(false);
-                }}
-                className={`flex shrink-0 items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition ${
+                onClick={() => selectClimate(option.name)}
+                className={`rounded-2xl border p-4 text-left transition ${
                   climate === option.name
-                    ? "border-slate-900 bg-slate-900 text-white"
+                    ? "border-slate-900 bg-slate-900 text-white shadow-lg"
                     : `${option.color} border-transparent text-slate-800 hover:border-slate-300`
                 }`}
               >
-                <span className="text-lg">{option.emoji}</span>
-                {option.name}
+                <span className="text-2xl">{option.emoji}</span>
+                <span className="mt-2 block text-sm font-extrabold">{option.name}</span>
+                <span className={`mt-1 block text-xs ${
+                  climate === option.name ? "text-slate-300" : "text-slate-600"
+                }`}>
+                  {option.name === "Hot"
+                    ? "Summer"
+                    : option.name === "Warm"
+                      ? "Light outfits"
+                      : option.name === "Mild"
+                        ? "Everyday"
+                        : option.name === "Rainy"
+                          ? "Rain-ready"
+                          : option.name === "Cool"
+                            ? "Layering"
+                            : "Winter"}
+                </span>
               </button>
             ))}
           </div>
         </section>
 
-        {/* Search and sorting */}
-        <section id="products" className="mt-8 scroll-mt-24">
+        <section id="products" className="mt-10 scroll-mt-24">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[.18em] text-violet-500">
-                Fresh finds
+                CURATED FOR YOU
               </p>
               <h2 className="mt-1 text-2xl font-black sm:text-3xl">
-                Explore the collection
+                {gender === "Everyone" ? "Explore the collection" : `${gender}'s collection`}
               </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {weatherInfo.title} · {climate} weather
+              </p>
             </div>
 
             <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
@@ -549,52 +675,53 @@ export default function StorePage() {
             </label>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <div className="flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-100">
-              <span className="text-xl text-slate-400">⌕</span>
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search outfits, shirts, jeans, footwear..."
-                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  aria-label="Clear search"
-                  className="text-lg text-slate-400 hover:text-slate-900"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-
-            <button
-              onClick={openMeeshoSearch}
-              className="rounded-2xl bg-gradient-to-r from-orange-500 to-pink-500 px-5 py-3.5 text-sm font-extrabold text-white shadow-md shadow-orange-100 transition hover:from-orange-600 hover:to-pink-600"
-            >
-              Search on Meesho ↗
-            </button>
+          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-100">
+            <span className="text-xl text-slate-400">⌕</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search outfits, dresses, sweaters, footwear..."
+              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="text-lg text-slate-400 hover:text-slate-900"
+              >
+                ×
+              </button>
+            )}
           </div>
 
-          {/* Categories */}
-          <div className="mt-5 flex gap-2 overflow-x-auto pb-3">
-            {categories.map((item) => (
-              <button
-                key={item}
-                onClick={() => {
-                  setCategory(item);
-                  setWishlistOnly(false);
-                }}
-                className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-bold transition ${
-                  category === item
-                    ? "bg-violet-600 text-white shadow-md shadow-violet-100"
-                    : "border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-700"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
+          <div className="mt-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-extrabold text-slate-800">
+                Shop by category
+              </h3>
+              <span className="text-xs text-slate-400">
+                {gender} · {climate}
+              </span>
+            </div>
+
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-3">
+              {availableCategories.map((item) => (
+                <button
+                  key={item}
+                  onClick={() => {
+                    setCategory(item);
+                    setWishlistOnly(false);
+                  }}
+                  className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-bold transition ${
+                    category === item
+                      ? "bg-violet-600 text-white shadow-md shadow-violet-100"
+                      : "border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-700"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -604,20 +731,14 @@ export default function StorePage() {
                 {loading ? "…" : displayedProducts.length}
               </span>
             </p>
-
             <button
-              onClick={() => {
-                setSearch("");
-                setCategory("All");
-                setWishlistOnly(false);
-              }}
+              onClick={clearFilters}
               className="text-sm font-bold text-violet-600 hover:underline"
             >
               Clear filters
             </button>
           </div>
 
-          {/* Loading state */}
           {loading && (
             <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
@@ -636,7 +757,6 @@ export default function StorePage() {
             </div>
           )}
 
-          {/* Error state */}
           {!loading && error && (
             <div className="mt-6 rounded-3xl border border-orange-200 bg-orange-50 p-8 text-center">
               <span className="text-4xl">🛍️</span>
@@ -653,17 +773,16 @@ export default function StorePage() {
             </div>
           )}
 
-          {/* Real product cards */}
           {!loading && !error && displayedProducts.length > 0 && (
             <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
               {displayedProducts.map((product, index) => {
                 const saved = wishlist.some(
-                  (item) => String(item.id) === String(product.id)
+                  (item) => getProductId(item) === getProductId(product)
                 );
 
                 return (
                   <article
-                    key={product.id || product.url}
+                    key={getProductId(product)}
                     className="group overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/70"
                   >
                     <div className="relative aspect-[4/5] overflow-hidden bg-gradient-to-br from-orange-50 via-pink-50 to-violet-50">
@@ -686,6 +805,7 @@ export default function StorePage() {
                           href={product.url}
                           target="_blank"
                           rel="noopener noreferrer"
+                          aria-label={`View ${product.title} on Meesho`}
                           className="flex h-full items-center justify-center text-6xl"
                         >
                           👕
@@ -698,11 +818,7 @@ export default function StorePage() {
 
                       <button
                         onClick={() => toggleWishlist(product)}
-                        aria-label={
-                          saved
-                            ? "Remove from wishlist"
-                            : "Add to wishlist"
-                        }
+                        aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
                         className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-lg shadow-md transition hover:scale-110 ${
                           saved
                             ? "bg-pink-600 text-white"
@@ -757,7 +873,6 @@ export default function StorePage() {
             </div>
           )}
 
-          {/* Empty state */}
           {!loading && !error && displayedProducts.length === 0 && (
             <div className="mt-8 rounded-3xl border border-dashed border-orange-200 bg-white p-10 text-center">
               <span className="text-5xl">🔎</span>
@@ -765,14 +880,10 @@ export default function StorePage() {
                 No matching products found
               </h3>
               <p className="mt-2 text-sm text-slate-500">
-                Try another category or search term.
+                Try another category or remove your search filters.
               </p>
               <button
-                onClick={() => {
-                  setSearch("");
-                  setCategory("All");
-                  setWishlistOnly(false);
-                }}
+                onClick={clearFilters}
                 className="mt-5 rounded-full bg-violet-600 px-6 py-3 text-sm font-bold text-white hover:bg-violet-700"
               >
                 Show all products
@@ -781,7 +892,7 @@ export default function StorePage() {
           )}
         </section>
 
-        <footer className="mt-12 border-t border-orange-100 py-6 text-center text-xs text-slate-400">
+        <footer className="mt-14 border-t border-orange-100 py-6 text-center text-xs text-slate-400">
           WeatherWear · Style for every forecast ☀️
         </footer>
       </div>

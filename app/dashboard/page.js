@@ -1,177 +1,174 @@
-
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const STORAGE_KEY = "weatherwear-weather";
-const SESSION_KEY = "weatherwear-dashboard-session";
+const SESSION_KEY = "weather-dashboard-session-v4";
 
-const weatherLabels = {
-  0: "Clear sky",
-  1: "Mainly clear",
-  2: "Partly cloudy",
-  3: "Overcast",
-  45: "Foggy",
-  48: "Foggy",
-  51: "Light drizzle",
-  53: "Drizzle",
-  55: "Heavy drizzle",
-  56: "Freezing drizzle",
-  57: "Heavy freezing drizzle",
-  61: "Light rain",
-  63: "Rain",
-  65: "Heavy rain",
-  66: "Freezing rain",
-  67: "Heavy freezing rain",
-  71: "Light snow",
-  73: "Snow",
-  75: "Heavy snow",
-  77: "Snow grains",
-  80: "Rain showers",
-  81: "Rain showers",
-  82: "Heavy showers",
-  85: "Snow showers",
-  86: "Heavy snow showers",
-  95: "Thunderstorm",
-  96: "Thunderstorm with hail",
-  99: "Severe thunderstorm",
+/* ------------------------------------------------------------------ */
+/* Weather data helpers                                                */
+/* ------------------------------------------------------------------ */
+
+const WEATHER = {
+  0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+  45: "Fog", 48: "Rime fog",
+  51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
+  56: "Freezing drizzle", 57: "Dense freezing drizzle",
+  61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+  66: "Freezing rain", 67: "Heavy freezing rain",
+  71: "Slight snowfall", 73: "Moderate snowfall", 75: "Heavy snowfall", 77: "Snow grains",
+  80: "Rain showers", 81: "Moderate rain showers", 82: "Violent rain showers",
+  85: "Snow showers", 86: "Heavy snow showers",
+  95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Thunderstorm with heavy hail",
 };
 
-function getWeatherIcon(code) {
-  if ([0, 1].includes(code)) return "☀️";
-  if ([2, 3].includes(code)) return "⛅";
+const RAIN_CODES = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
+const SNOW_CODES = [71, 73, 75, 77, 85, 86];
+
+function weatherIcon(code) {
+  if (code === 0) return "☀️";
+  if ([1, 2].includes(code)) return "🌤️";
+  if (code === 3) return "☁️";
   if ([45, 48].includes(code)) return "🌫️";
-  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67].includes(code))
-    return "🌧️";
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return "❄️";
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67].includes(code)) return "🌧️";
+  if (SNOW_CODES.includes(code)) return "❄️";
   if ([80, 81, 82].includes(code)) return "🌦️";
   if ([95, 96, 99].includes(code)) return "⛈️";
   return "🌤️";
 }
 
-function getAdvice(temp, rain, code) {
-  if (
-    rain >= 50 ||
-    [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].includes(
-      code
-    )
-  ) {
-    return {
-      emoji: "🌧️",
-      title: "Rain-ready outfit",
-      clothes:
-        "Wear a water-resistant jacket and comfortable shoes.",
-      activity:
-        "Choose indoor plans if rain becomes heavy, and carry an umbrella when going out.",
-    };
+function getAdvice(temperature, rainChance, code) {
+  const raining = rainChance >= 50 || RAIN_CODES.includes(code);
+
+  let title = "Comfortable everyday style";
+  let clothes = "Choose comfortable clothes, breathable fabrics and footwear suited to your plans.";
+
+  if (temperature >= 35) {
+    title = "Beat the heat";
+    clothes = "Choose lightweight cotton or linen, breathable tops, loose-fitting bottoms and comfortable sandals. Sunglasses and a hat can help outdoors.";
+  } else if (temperature >= 28) {
+    title = "Light and breathable";
+    clothes = "Wear breathable cotton tops, T-shirts, lightweight shirts, dresses or airy trousers. Choose comfortable footwear for the day.";
+  } else if (temperature >= 20) {
+    title = "Easy everyday layers";
+    clothes = "A T-shirt, shirt or lightweight top with jeans, trousers or a skirt should work well. Carry a light layer if you expect to be out late.";
+  } else if (temperature >= 12) {
+    title = "Layer up comfortably";
+    clothes = "Try a long-sleeved top with jeans or trousers and a light jacket or sweatshirt. Closed shoes can help keep you comfortable.";
+  } else {
+    title = "Stay warm";
+    clothes = "Choose warm layers, a sweater or jacket, full-length trousers and closed footwear. Add a scarf if needed.";
   }
 
-  if (temp >= 32) {
-    return {
-      emoji: "🧢",
-      title: "Beat the heat",
-      clothes:
-        "Choose light cotton clothes, sunglasses and a breathable hat.",
-      activity:
-        "Plan outdoor activities for the cooler morning or evening hours.",
-    };
+  if (raining) {
+    clothes += " Rain is possible, so carry an umbrella or rain jacket and choose water-resistant footwear.";
   }
 
-  if (temp >= 24) {
-    return {
-      emoji: "👕",
-      title: "Light and comfortable",
-      clothes:
-        "A T-shirt, light trousers and breathable shoes are suitable.",
-      activity:
-        "A walk, college commute, or casual outdoor plan should feel comfortable.",
-    };
+  let activity = "A walk, errands or outdoor plans should be comfortable.";
+
+  if (temperature >= 35) {
+    activity = "Plan outdoor activities for cooler hours, take breaks in the shade and drink water regularly.";
+  } else if (temperature >= 29) {
+    activity = "Outdoor plans are best earlier or later in the day. Take water and seek shade when needed.";
   }
 
-  if (temp >= 16) {
-    return {
-      emoji: "🧥",
-      title: "Layer up lightly",
-      clothes: "Wear long sleeves with a light jacket.",
-      activity:
-        "A walk or sightseeing can be comfortable with a light extra layer.",
-    };
+  if (raining) {
+    activity = "Keep an umbrella handy, allow extra time for travel and consider an indoor activity if the rain becomes heavy.";
   }
 
-  return {
-    emoji: "🧣",
-    title: "Stay warm",
-    clothes:
-      "Wear a warm sweater, layered clothing and a jacket.",
-    activity:
-      "Choose indoor plans or a short walk with warm layers, especially early or late in the day.",
-  };
+  if ([95, 96, 99].includes(code)) {
+    activity = "A thunderstorm is possible. Prefer indoor activities and avoid exposed outdoor areas during lightning.";
+  }
+
+  return { title, clothes, activity };
 }
 
-function formatWeekday(date) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
-    weekday: "long",
-  });
+const CATEGORY_DOT = {
+  Top: "bg-rose-400",
+  Bottom: "bg-indigo-400",
+  Layer: "bg-violet-500",
+  Shoes: "bg-amber-500",
+  Accessory: "bg-emerald-500",
+  "Rain gear": "bg-sky-500",
+};
+
+function getOutfitItems(temperature, rainChance, code) {
+  const raining = rainChance >= 50 || RAIN_CODES.includes(code);
+  let items;
+
+  if (temperature >= 35) {
+    items = [["👕", "Cotton tee", "Top"], ["🩳", "Light shorts", "Bottom"], ["🕶️", "Sunglasses", "Accessory"], ["🧢", "Cap", "Accessory"], ["🩴", "Sandals", "Shoes"], ["💧", "Water bottle", "Accessory"]];
+  } else if (temperature >= 28) {
+    items = [["👕", "Breathable top", "Top"], ["👖", "Airy trousers", "Bottom"], ["🕶️", "Sunglasses", "Accessory"], ["👟", "Comfy shoes", "Shoes"]];
+  } else if (temperature >= 20) {
+    items = [["👕", "Tee or shirt", "Top"], ["👖", "Jeans", "Bottom"], ["🧥", "Light layer", "Layer"], ["👟", "Sneakers", "Shoes"]];
+  } else if (temperature >= 12) {
+    items = [["👚", "Long sleeves", "Top"], ["👖", "Trousers", "Bottom"], ["🧥", "Light jacket", "Layer"], ["👟", "Closed shoes", "Shoes"]];
+  } else {
+    items = [["🧥", "Warm jacket", "Layer"], ["🧶", "Sweater", "Top"], ["👖", "Full trousers", "Bottom"], ["🧣", "Scarf", "Accessory"], ["🥾", "Boots", "Shoes"]];
+  }
+
+  if (raining) items = [["☔", "Umbrella", "Rain gear"], ["🥾", "Water-resistant shoes", "Rain gear"], ...items.slice(0, 3)];
+  return items;
+}
+
+function getTheme(current) {
+  if (!current) return "clear";
+  const code = Number(current.weather_code);
+  const temp = Number(current.temperature_2m);
+  if (current.is_day === 0) return "night";
+  if ([95, 96, 99].includes(code)) return "storm";
+  if (RAIN_CODES.includes(code)) return "rain";
+  if (SNOW_CODES.includes(code)) return "snow";
+  if ([45, 48].includes(code)) return "fog";
+  if ([2, 3].includes(code)) return "cloudy";
+  if (temp >= 33) return "hot";
+  return "clear";
+}
+
+// Full-page sky gradients: deep enough for white text on every theme.
+const THEME_BG = {
+  clear: "linear-gradient(180deg,#0369a1,#0ea5e9 55%,#7dd3fc)",
+  hot: "linear-gradient(180deg,#c2410c,#f97316 55%,#fcd34d)",
+  cloudy: "linear-gradient(180deg,#334155,#64748b 55%,#94a3b8)",
+  rain: "linear-gradient(180deg,#0f172a,#334155 55%,#64748b)",
+  storm: "linear-gradient(180deg,#020617,#312e81 55%,#4c1d95)",
+  snow: "linear-gradient(180deg,#4338ca,#6366f1 55%,#a5b4fc)",
+  fog: "linear-gradient(180deg,#475569,#64748b 55%,#94a3b8)",
+  night: "linear-gradient(180deg,#0f0a2e,#1e1b4b 55%,#4c1d95)",
+};
+
+// Fixed values (no Math.random) so server and client render the same HTML.
+const RAIN_DROPS = Array.from({ length: 28 }, (_, i) => ({ left: (i * 37 + 5) % 100, delay: ((i * 0.37) % 2).toFixed(2), dur: (0.7 + (i % 4) * 0.15).toFixed(2) }));
+const SNOW_FLAKES = Array.from({ length: 22 }, (_, i) => ({ left: (i * 23 + 9) % 100, delay: ((i * 0.55) % 5).toFixed(1), dur: (6 + (i % 5) * 1.3).toFixed(1), size: 10 + (i % 4) * 5 }));
+const STARS = Array.from({ length: 34 }, (_, i) => ({ left: (i * 41 + 3) % 100, top: (i * 17 + 7) % 70, delay: ((i * 0.3) % 3).toFixed(1), size: 2 + (i % 3) }));
+
+function formatDay(date) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", { weekday: "long" });
+}
+
+function formatShortDay(date) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", { weekday: "short" });
 }
 
 function formatDate(date) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function normalizePhotonPlace(feature) {
-  const properties = feature?.properties || {};
-  const coords = feature?.geometry?.coordinates;
-
-  if (
-    !Array.isArray(coords) ||
-    coords.length < 2 ||
-    !Number.isFinite(Number(coords[0])) ||
-    !Number.isFinite(Number(coords[1]))
-  ) {
-    return null;
-  }
-
-  const name =
-    properties.village ||
-    properties.town ||
-    properties.city ||
-    properties.locality ||
-    properties.name ||
-    properties.county ||
-    properties.state ||
-    properties.country;
-
-  if (!name) return null;
-
-  return {
-    name,
-    admin1:
-      properties.state ||
-      properties.county ||
-      properties.district ||
-      "",
-    country: properties.country || "",
-    latitude: Number(coords[1]),
-    longitude: Number(coords[0]),
-    source: "Photon",
-  };
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function placeLabel(place) {
-  return (
-    [place?.name, place?.admin1, place?.country]
-      .filter(Boolean)
-      .join(", ") || "Your current location"
-  );
+  if (!place) return "";
+  return [place.name, place.admin1, place.country]
+    .filter(Boolean)
+    .filter((value, index, array) => array.indexOf(value) === index)
+    .join(", ");
 }
 
-function validCoordinates(place) {
+function validPlace(place) {
   return (
-    Number.isFinite(Number(place?.latitude)) &&
-    Number.isFinite(Number(place?.longitude)) &&
+    place &&
+    typeof place.name === "string" &&
+    place.name.trim().length > 0 &&
+    Number.isFinite(Number(place.latitude)) &&
+    Number.isFinite(Number(place.longitude)) &&
     Number(place.latitude) >= -90 &&
     Number(place.latitude) <= 90 &&
     Number(place.longitude) >= -180 &&
@@ -179,579 +176,691 @@ function validCoordinates(place) {
   );
 }
 
-const outfitImages = {
-  rain: [
-    {
-      src: "https://images.unsplash.com/photo-1544923246-77307dd654cb?auto=format&fit=crop&w=700&q=85",
-      alt: "Rainy weather outfit inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=700&q=85",
-      alt: "Jacket outfit inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&w=700&q=85",
-      alt: "Casual layered outfit inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=700&q=85",
-      alt: "Casual fashion inspiration",
-    },
-  ],
-  hot: [
-    {
-      src: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=700&q=85",
-      alt: "Light summer outfit inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=700&q=85",
-      alt: "Summer fashion inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=700&q=85",
-      alt: "Lightweight clothing inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=700&q=85",
-      alt: "Everyday summer outfit inspiration",
-    },
-  ],
-  mild: [
-    {
-      src: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=700&q=85",
-      alt: "Casual everyday outfit inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=700&q=85",
-      alt: "Casual fashion inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=700&q=85",
-      alt: "Everyday clothing inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=700&q=85",
-      alt: "Seasonal outfit inspiration",
-    },
-  ],
-  cold: [
-    {
-      src: "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=700&q=85",
-      alt: "Cold weather jacket outfit inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1544923246-77307dd654cb?auto=format&fit=crop&w=700&q=85",
-      alt: "Layered outfit inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&w=700&q=85",
-      alt: "Warm clothing inspiration",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&w=700&q=85",
-      alt: "Cold season fashion inspiration",
-    },
-  ],
-};
+function normalizePlace(feature) {
+  const properties = feature?.properties || {};
+  const coordinates = feature?.geometry?.coordinates;
 
-function getOutfitCategory(current, rainChance) {
-  if (!current) return "mild";
+  if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
 
-  const code = current.weather_code;
-  const temp = current.temperature_2m;
+  const name = properties.name || properties.city || properties.town || properties.village || properties.locality;
+  if (!name) return null;
 
-  if (
-    rainChance >= 50 ||
-    [
-      51, 53, 55, 56, 57, 61, 63, 65, 66, 67,
-      80, 81, 82, 95, 96, 99,
-    ].includes(code)
-  ) {
-    return "rain";
-  }
-
-  if (temp >= 32) return "hot";
-  if (temp < 16) return "cold";
-
-  return "mild";
+  return {
+    name,
+    admin1: properties.state || properties.county || properties.district || properties.region || "",
+    country: properties.country || "",
+    latitude: Number(coordinates[1]),
+    longitude: Number(coordinates[0]),
+  };
 }
 
+function normalizeReversePlace(data, latitude, longitude) {
+  const address = data?.address || {};
+
+  const name =
+    address.village || address.hamlet || address.town || address.city || address.municipality ||
+    address.suburb || address.neighbourhood || address.locality || address.city_district ||
+    address.county || address.state_district;
+
+  if (!name) return null;
+
+  return {
+    name,
+    admin1: address.state || address.region || "",
+    country: address.country || "",
+    latitude: Number(latitude),
+    longitude: Number(longitude),
+  };
+}
+
+function getOutfitClimate(current, rainChance = 0) {
+  if (!current) return "Moderate";
+
+  const temperature = Number(current.temperature_2m);
+  const code = Number(current.weather_code);
+
+  if (rainChance >= 50 || RAIN_CODES.includes(code)) return "Rainy";
+  if (temperature >= 32) return "Hot";
+  if (temperature <= 18) return "Cold";
+  if ([1, 2, 3, 45, 48].includes(code)) return "Cloudy";
+
+  return "Moderate";
+}
+
+/* ------------------------------------------------------------------ */
+/* Small hooks and components                                          */
+/* ------------------------------------------------------------------ */
+
+function useCountUp(target, duration = 900) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (!Number.isFinite(target)) return undefined;
+    let frame;
+    const start = performance.now();
+
+    const tick = (now) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(target * eased);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, duration]);
+
+  return Math.round(value);
+}
+
+function useTypewriter(text) {
+  const [shown, setShown] = useState("");
+
+  useEffect(() => {
+    if (!text) {
+      setShown("");
+      return undefined;
+    }
+    let i = 0;
+    const timer = setInterval(() => {
+      i += 3;
+      setShown(text.slice(0, i));
+      if (i >= text.length) clearInterval(timer);
+    }, 16);
+    return () => clearInterval(timer);
+  }, [text]);
+
+  return shown;
+}
+
+function ImageTile({ item, gender, index }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div className="ww-pop relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm" style={{ "--i": index }}>
+      {!loaded && <div className="ww-skeleton absolute inset-0" />}
+      <img
+        src={item.image}
+        alt={item.alt || `${gender} weather-appropriate outfit`}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        className={`aspect-[3/4] w-full object-cover transition duration-700 hover:scale-105 ${loaded ? "opacity-100" : "opacity-0"}`}
+      />
+      {item.photographer && (
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noreferrer"
+          className="absolute bottom-1.5 left-1.5 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm"
+        >
+          {item.photographer}
+        </a>
+      )}
+    </div>
+  );
+}
+
+function SkyBackground({ theme, current }) {
+  const code = Number(current?.weather_code);
+  const raining = RAIN_CODES.includes(code);
+  const snowing = SNOW_CODES.includes(code);
+  const sunny = theme === "clear" || theme === "hot";
+  const night = theme === "night";
+  const storm = theme === "storm";
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+      {Object.entries(THEME_BG).map(([key, bg]) => (
+        <div key={key} className="absolute inset-0" style={{ background: bg, opacity: key === theme ? 1 : 0, transition: "opacity 1.4s ease" }} />
+      ))}
+
+      <div className="ww-fx" style={{ opacity: sunny ? 1 : 0 }}>
+        <div className="ww-sunburst" />
+      </div>
+
+      <div className="ww-fx" style={{ opacity: night ? 1 : 0 }}>
+        <div className="ww-moon" />
+        {STARS.map((s, i) => (
+          <span key={i} className="ww-star" style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.size, height: s.size, animationDelay: `${s.delay}s` }} />
+        ))}
+      </div>
+
+      <div className="ww-fx" style={{ opacity: theme === "hot" || night ? 0.3 : 0.85 }}>
+        <div className="ww-bgcloud" style={{ top: "14%", animationDuration: "70s", animationDelay: "-10s" }} />
+        <div className="ww-bgcloud" style={{ top: "36%", animationDuration: "95s", animationDelay: "-45s", scale: "1.4" }} />
+        <div className="ww-bgcloud" style={{ top: "62%", animationDuration: "80s", animationDelay: "-30s", scale: "0.8" }} />
+      </div>
+
+      <div className="ww-fx" style={{ opacity: raining || storm ? 1 : 0 }}>
+        {RAIN_DROPS.map((d, i) => (
+          <span key={i} className="ww-drop" style={{ left: `${d.left}%`, animationDelay: `${d.delay}s`, animationDuration: `${d.dur}s` }} />
+        ))}
+      </div>
+
+      <div className="ww-fx" style={{ opacity: snowing ? 1 : 0 }}>
+        {SNOW_FLAKES.map((f, i) => (
+          <span key={i} className="ww-flake" style={{ left: `${f.left}%`, fontSize: f.size, animationDelay: `${f.delay}s`, animationDuration: `${f.dur}s` }}>❄</span>
+        ))}
+      </div>
+
+      {storm && <div className="ww-flash" />}
+    </div>
+  );
+}
+
+function ExploreButton({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group mt-6 flex w-full items-center justify-between rounded-2xl bg-slate-900 px-6 py-4 text-left text-white shadow-lg shadow-slate-900/25 ring-1 ring-slate-900 transition duration-300 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/30 hover:ring-indigo-700 active:translate-y-0 active:scale-[0.99]"
+    >
+      <span className="leading-tight">
+        <span className="block text-base font-bold">Explore outfit ideas</span>
+        <span className="mt-0.5 block text-xs font-medium text-white/65">Browse looks matched to today's weather</span>
+      </span>
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-900 transition duration-300 group-hover:translate-x-1">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </span>
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Dashboard                                                           */
+/* ------------------------------------------------------------------ */
+
 export default function Dashboard() {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [city, setCity] = useState("");
   const [weather, setWeather] = useState(null);
-  const [coordinates, setCoordinates] = useState(null);
   const [location, setLocation] = useState("");
+  const [city, setCity] = useState("");
   const [selectedPlace, setSelectedPlace] = useState(null);
+  const [coordinates, setCoordinates] = useState(null);
+
   const [suggestions, setSuggestions] = useState([]);
-  const [searchingPlaces, setSearchingPlaces] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchingPlaces, setSearchingPlaces] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedForecast, setSelectedForecast] = useState(null);
+
+  const [showOutfitIdeas, setShowOutfitIdeas] = useState(false);
+  const [selectedGender, setSelectedGender] = useState("Women");
+  const [outfitRecommendations, setOutfitRecommendations] = useState([]);
+  const [outfitLoading, setOutfitLoading] = useState(false);
+  const [outfitError, setOutfitError] = useState("");
+
   const [question, setQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
-  const [selectedForecast, setSelectedForecast] = useState(null);
-  const [showOutfitIdeas, setShowOutfitIdeas] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
+  const requestVersion = useRef(0);
   const initialLocationStarted = useRef(false);
+  const autocompleteVersion = useRef(0);
+  const searchBoxRef = useRef(null);
+  const outfitRequest = useRef(0);
 
-  const loadWeatherForPlace = useCallback(async (place) => {
-    if (!validCoordinates(place)) {
-      setError(
-        "I couldn't identify that location. Please choose a suggestion or try another search."
-      );
+  /* ---------- Session helpers ---------- */
+
+  const readSession = () => {
+    try {
+      return JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+    } catch {
+      return null;
+    }
+  };
+
+  const writeSession = (patch) => {
+    try {
+      const saved = readSession() || {};
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...saved, ...patch, updatedAt: Date.now() }));
+    } catch {
+      // Weather remains available in component state.
+    }
+  };
+
+  /* ---------- Weather loading ---------- */
+
+  const loadWeatherForPlace = useCallback(async (place, existingRequestId) => {
+    if (!validPlace(place)) {
+      setError("Please select a valid location.");
       setLoading(false);
       return;
     }
 
+    const requestId = existingRequestId ?? ++requestVersion.current;
+
     setLoading(true);
     setError("");
-    setAiAnswer("");
 
     try {
       const params = new URLSearchParams({
-        latitude: String(place.latitude),
-        longitude: String(place.longitude),
-        current:
-          "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
-        daily:
-          "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum",
+        latitude: String(Number(place.latitude)),
+        longitude: String(Number(place.longitude)),
+        current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day",
+        daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum",
         forecast_days: "16",
         timezone: "auto",
       });
 
-      const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?${params}`
-      );
+      const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { cache: "no-store" });
 
-      if (!response.ok) {
-        throw new Error(
-          "Weather data is temporarily unavailable. Please try again."
-        );
-      }
+      if (!response.ok) throw new Error("Unable to fetch weather for this location.");
 
       const data = await response.json();
 
-      if (!data.current || !data.daily?.time?.length) {
-        throw new Error("Incomplete weather data received.");
+      if (!data.current || !Array.isArray(data.daily?.time) || data.daily.time.length === 0) {
+        throw new Error("Weather data is unavailable for this location.");
       }
 
+      if (requestId !== requestVersion.current) return;
+
       const savedPlace = {
-        ...place,
+        name: place.name,
+        admin1: place.admin1 || "",
+        country: place.country || "",
         latitude: Number(place.latitude),
         longitude: Number(place.longitude),
-        searchText: placeLabel(place),
+        ...(place.searchText ? { searchText: place.searchText } : {}),
       };
 
       const label = placeLabel(savedPlace);
 
-      const savedState = {
+      setWeather(data);
+      setSelectedPlace(savedPlace);
+      setLocation(label);
+      setCity(label);
+      setCoordinates({ latitude: savedPlace.latitude, longitude: savedPlace.longitude });
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setSelectedForecast(null);
+      setAiAnswer("");
+      setAiError("");
+
+      writeSession({
         place: savedPlace,
         weather: data,
         location: label,
-        coordinates: {
-          latitude: savedPlace.latitude,
-          longitude: savedPlace.longitude,
-        },
-        savedAt: Date.now(),
-      };
-
-      setLocation(label);
-      setCity(label);
-      setCoordinates(savedState.coordinates);
-      setSelectedPlace(savedPlace);
-      setWeather(data);
-      setSearchOpen(false);
-      setShowSuggestions(false);
-      setSuggestions([]);
-
-      // Shared with other pages, including Store.
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
-      } catch {
-        // The current page can still display weather without localStorage.
-      }
-
-      // Used to restore the same selected location when navigating
-      // between Dashboard and Store in the same browser tab.
-      try {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(savedState));
-      } catch {
-        // The dashboard can still work without sessionStorage.
-      }
-    } catch (err) {
-      setError(err.message || "Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const restoreSessionWeather = useCallback(() => {
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
-      if (!raw) return false;
-
-      const saved = JSON.parse(raw);
-
-      if (
-        !saved?.weather?.current ||
-        !saved?.weather?.daily?.time?.length ||
-        !validCoordinates(saved.place)
-      ) {
-        return false;
-      }
-
-      setWeather(saved.weather);
-      setLocation(saved.location || placeLabel(saved.place));
-      setCity(saved.location || placeLabel(saved.place));
-      setSelectedPlace(saved.place);
-      setCoordinates(saved.coordinates || {
-        latitude: Number(saved.place.latitude),
-        longitude: Number(saved.place.longitude),
+        coordinates: { latitude: savedPlace.latitude, longitude: savedPlace.longitude },
       });
-      setError("");
-      setLoading(false);
-
-      return true;
-    } catch {
-      return false;
+    } catch (err) {
+      if (requestId === requestVersion.current) setError(err.message || "Unable to load weather.");
+    } finally {
+      if (requestId === requestVersion.current) setLoading(false);
     }
   }, []);
 
-  const searchWeather = useCallback(
-    async (event) => {
-      event?.preventDefault();
+  const getLiveLocation = useCallback(() => {
+    const requestId = ++requestVersion.current;
 
-      const query = city.trim();
+    setLoading(true);
+    setError("");
+    setShowSuggestions(false);
+    setSuggestions([]);
 
-      if (!query) {
-        setError("Please enter a city, town, or area.");
-        return;
-      }
+    if (!navigator.geolocation) {
+      setError("Your browser does not support location detection. Search for your city instead.");
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      setError("");
-      setShowSuggestions(false);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        if (requestId !== requestVersion.current) return;
 
-      try {
-        let place =
-          selectedPlace?.searchText?.toLowerCase() === query.toLowerCase()
-            ? selectedPlace
-            : null;
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
 
-        if (!place) {
+        const gpsPlace = { name: "Your location", admin1: "", country: "", latitude, longitude };
+
+        await loadWeatherForPlace(gpsPlace, requestId);
+
+        if (requestId !== requestVersion.current) return;
+
+        try {
           const params = new URLSearchParams({
-            name: query,
-            count: "10",
-            language: "en",
-            format: "json",
+            format: "jsonv2",
+            lat: String(latitude),
+            lon: String(longitude),
+            zoom: "14",
+            addressdetails: "1",
           });
 
-          const response = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?${params}`
-          );
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, { cache: "no-store" });
 
-          if (!response.ok) {
-            throw new Error("Location search failed. Please try again.");
+          if (!response.ok) throw new Error("Unable to resolve the location name.");
+
+          const data = await response.json();
+
+          if (requestId !== requestVersion.current) return;
+
+          const resolvedPlace = normalizeReversePlace(data, latitude, longitude);
+          if (!resolvedPlace) return;
+
+          const label = placeLabel(resolvedPlace);
+
+          setSelectedPlace(resolvedPlace);
+          setLocation(label);
+          setCity(label);
+          setCoordinates({ latitude, longitude });
+
+          const saved = readSession();
+          if (saved?.weather) {
+            writeSession({ place: resolvedPlace, location: label, coordinates: { latitude, longitude } });
           }
+        } catch (err) {
+          console.warn("Reverse-geocoding error:", err);
+        }
+      },
+      (geoError) => {
+        if (requestId !== requestVersion.current) return;
 
-          const results = (await response.json()).results || [];
+        let message = "Unable to detect your location. Search for a city instead.";
 
-          const exact = results.find(
-            (item) => item.name?.toLowerCase() === query.toLowerCase()
-          );
-
-          const candidate = exact || results[0];
-
-          if (candidate) {
-            place = {
-              name: candidate.name,
-              admin1: candidate.admin1 || candidate.admin2 || "",
-              country: candidate.country || "",
-              latitude: candidate.latitude,
-              longitude: candidate.longitude,
-            };
-          } else {
-            const photonParams = new URLSearchParams({
-              q: query,
-              limit: "8",
-              lang: "en",
-            });
-
-            const photonResponse = await fetch(
-              `https://photon.komoot.io/api/?${photonParams}`
-            );
-
-            if (photonResponse.ok) {
-              const photonData = await photonResponse.json();
-
-              const places = (photonData.features || [])
-                .map(normalizePhotonPlace)
-                .filter(Boolean);
-
-              place =
-                places.find(
-                  (item) => item.name.toLowerCase() === query.toLowerCase()
-                ) || places[0];
-            }
-          }
+        if (geoError.code === 1) {
+          message = "Location permission was denied. Allow location access in your browser or search for a city.";
+        } else if (geoError.code === 2) {
+          message = "Your location is currently unavailable. Check your device location settings or search for a city.";
+        } else if (geoError.code === 3) {
+          message = "Location detection timed out. Try again or search for a city.";
         }
 
-        if (!place || !validCoordinates(place)) {
-          throw new Error(
-            `No matching location found for "${query}". Try selecting a suggestion.`
-          );
+        try {
+          sessionStorage.removeItem(SESSION_KEY);
+        } catch {
+          // Ignore unavailable storage.
         }
 
-        await loadWeatherForPlace(place);
-      } catch (err) {
-        setError(err.message || "Something went wrong. Please try again.");
+        setWeather(null);
+        setSelectedPlace(null);
+        setLocation("");
+        setCity("");
+        setCoordinates(null);
+        setError(message);
         setLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  }, [loadWeatherForPlace]);
+
+  /*
+   * Location behaviour:
+   *  - Moving to another page and coming back (client-side navigation) restores the
+   *    exact location and weather the person last chose, until they change it.
+   *  - A fresh visit (new tab/window) or a full browser reload starts with live GPS.
+   */
+  useEffect(() => {
+    if (initialLocationStarted.current) return;
+    initialLocationStarted.current = true;
+
+    let isReload = false;
+
+    try {
+      const navigation = performance.getEntriesByType("navigation")[0];
+      isReload = navigation?.type === "reload";
+    } catch {
+      // If navigation information is unavailable, use the saved session.
+    }
+
+    if (isReload) {
+      try {
+        sessionStorage.removeItem(SESSION_KEY);
+      } catch {
+        // Ignore unavailable storage.
       }
-    },
-    [city, selectedPlace, loadWeatherForPlace]
-  );
+      getLiveLocation();
+      return;
+    }
+
+    const saved = readSession();
+
+    const hasValidSession =
+      saved?.place &&
+      saved?.weather?.current &&
+      Array.isArray(saved?.weather?.daily?.time) &&
+      saved.weather.daily.time.length > 0 &&
+      validPlace(saved.place);
+
+    if (hasValidSession) {
+      const label = saved.location || placeLabel(saved.place);
+
+      setWeather(saved.weather);
+      setSelectedPlace(saved.place);
+      setLocation(label);
+      setCity(label);
+      setCoordinates(
+        saved.coordinates || { latitude: Number(saved.place.latitude), longitude: Number(saved.place.longitude) }
+      );
+      if (saved.gender === "Men" || saved.gender === "Women") setSelectedGender(saved.gender);
+      setLoading(false);
+      setError("");
+      return;
+    }
+
+    getLiveLocation();
+  }, [getLiveLocation]);
+
+  /* ---------- Autocomplete ---------- */
 
   useEffect(() => {
     const query = city.trim();
+    const version = ++autocompleteVersion.current;
 
-    if (
-      !searchOpen ||
-      query.length < 2 ||
-      selectedPlace?.searchText?.toLowerCase() === query.toLowerCase()
-    ) {
+    if (!showSuggestions || query.length < 2) {
       setSuggestions([]);
       setSearchingPlaces(false);
       return;
     }
 
-    let cancelled = false;
+    if (selectedPlace?.searchText?.toLowerCase() === query.toLowerCase()) {
+      setSuggestions([]);
+      setSearchingPlaces(false);
+      return;
+    }
 
     const timer = setTimeout(async () => {
       setSearchingPlaces(true);
 
       try {
-        const params = new URLSearchParams({
-          q: query,
-          limit: "8",
-          lang: "en",
-        });
+        const params = new URLSearchParams({ q: query, limit: "8", lang: "en" });
+        const response = await fetch(`https://photon.komoot.io/api/?${params}`);
 
-        const response = await fetch(
-          `https://photon.komoot.io/api/?${params}`
-        );
+        if (!response.ok) throw new Error("Location suggestions are unavailable.");
 
-        if (!response.ok) {
-          throw new Error("Location suggestions unavailable");
-        }
+        const data = await response.json();
+        const places = (data.features || []).map(normalizePlace).filter(validPlace);
 
-        const results = (await response.json()).features || [];
-        const places = results.map(normalizePhotonPlace).filter(Boolean);
-
-        if (!cancelled) {
-          setSuggestions(places);
-          setShowSuggestions(true);
-        }
+        if (version === autocompleteVersion.current) setSuggestions(places);
       } catch {
-        if (!cancelled) setSuggestions([]);
+        if (version === autocompleteVersion.current) setSuggestions([]);
       } finally {
-        if (!cancelled) setSearchingPlaces(false);
+        if (version === autocompleteVersion.current) setSearchingPlaces(false);
       }
-    }, 350);
+    }, 300);
 
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [city, selectedPlace, searchOpen]);
+    return () => clearTimeout(timer);
+  }, [city, showSuggestions, selectedPlace]);
+
+  // Close the suggestion list when clicking elsewhere.
+  useEffect(() => {
+    function onPointerDown(event) {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, []);
+
+  async function searchWeather(event) {
+    event.preventDefault();
+
+    const query = city.trim();
+
+    if (!query) {
+      setError("Enter a city, town or area.");
+      return;
+    }
+
+    const requestId = ++requestVersion.current;
+
+    setLoading(true);
+    setError("");
+    setShowSuggestions(false);
+
+    try {
+      let place = null;
+
+      if (selectedPlace?.searchText?.toLowerCase() === query.toLowerCase()) {
+        place = selectedPlace;
+      }
+
+      if (!place) {
+        const params = new URLSearchParams({ name: query, count: "10", language: "en", format: "json" });
+        const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
+
+        if (!response.ok) throw new Error("Location search failed.");
+
+        const data = await response.json();
+        const results = data.results || [];
+
+        const candidate = results.find((item) => item.name?.toLowerCase() === query.toLowerCase()) || results[0];
+
+        if (candidate) {
+          place = {
+            name: candidate.name,
+            admin1: candidate.admin1 || candidate.admin2 || "",
+            country: candidate.country || "",
+            latitude: candidate.latitude,
+            longitude: candidate.longitude,
+          };
+        } else {
+          const photonParams = new URLSearchParams({ q: query, limit: "8", lang: "en" });
+          const photonResponse = await fetch(`https://photon.komoot.io/api/?${photonParams}`);
+
+          if (photonResponse.ok) {
+            const photonData = await photonResponse.json();
+            const places = (photonData.features || []).map(normalizePlace).filter(validPlace);
+            place = places.find((item) => item.name.toLowerCase() === query.toLowerCase()) || places[0];
+          }
+        }
+      }
+
+      if (requestId !== requestVersion.current) return;
+
+      if (!place || !validPlace(place)) {
+        throw new Error(`No matching location found for "${query}". Try selecting a suggestion.`);
+      }
+
+      await loadWeatherForPlace(place, requestId);
+    } catch (err) {
+      if (requestId === requestVersion.current) {
+        setError(err.message || "Unable to find that location.");
+        setLoading(false);
+      }
+    }
+  }
 
   function choosePlace(place) {
-    setSelectedPlace({
-      ...place,
-      searchText: placeLabel(place),
-    });
+    ++requestVersion.current;
 
-    setCity(placeLabel(place));
+    const chosenPlace = { ...place, searchText: placeLabel(place) };
+
+    setSelectedPlace(chosenPlace);
+    setCity(placeLabel(chosenPlace));
     setSuggestions([]);
     setShowSuggestions(false);
     setError("");
 
-    loadWeatherForPlace(place);
+    loadWeatherForPlace(chosenPlace);
   }
 
-  async function reverseGeocode(latitude, longitude) {
-    let place = {
-      name: "My current location",
-      admin1: "",
-      country: "",
-      latitude,
-      longitude,
-    };
-
-    try {
-      const params = new URLSearchParams({
-        lat: String(latitude),
-        lon: String(longitude),
-        limit: "10",
-        lang: "en",
-      });
-
-      const response = await fetch(
-        `https://photon.komoot.io/reverse?${params}`
-      );
-
-      if (response.ok) {
-        const features = (await response.json()).features || [];
-
-        const settlement = ["village", "town", "city", "locality"]
-          .map((field) =>
-            features.find((feature) => feature.properties?.[field])
-          )
-          .find(Boolean);
-
-        const preferred =
-          settlement ||
-          features.find((feature) => {
-            const type = String(
-              feature.properties?.type || ""
-            ).toLowerCase();
-
-            return ![
-              "house",
-              "street",
-              "district",
-              "postcode",
-            ].includes(type);
-          }) ||
-          features[0];
-
-        const nearby = preferred
-          ? normalizePhotonPlace(preferred)
-          : null;
-
-        if (nearby) {
-          place = {
-            ...nearby,
-            latitude,
-            longitude,
-          };
-        }
-      }
-    } catch {
-      // GPS coordinates remain usable if reverse geocoding fails.
-    }
-
-    return place;
-  }
-
-  function useMyLocation() {
-    setError("");
-
-    if (!navigator.geolocation) {
-      setLoading(false);
-      setError(
-        "Your browser does not support location access. Please search for your area instead."
-      );
-      return;
-    }
-
-    setLoading(true);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
-          const place = await reverseGeocode(latitude, longitude);
-
-          await loadWeatherForPlace(place);
-        } catch {
-          setLoading(false);
-          setError(
-            "Unable to load your current location. Please try again or use Find a city."
-          );
-        }
-      },
-      (geoError) => {
-        setLoading(false);
-
-        if (geoError.code === 1) {
-          setError(
-            "Location permission was denied. Allow location access in your browser, or use Find a city."
-          );
-        } else if (geoError.code === 3) {
-          setError(
-            "Location lookup timed out. Please try Use my location again or use Find a city."
-          );
-        } else {
-          setError(
-            "Your location is unavailable. Please try again or use Find a city."
-          );
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      }
-    );
-  }
-
-  // A hard refresh should request GPS again.
-  // A client-side return from Store should restore the selected city.
-  useEffect(() => {
-    if (initialLocationStarted.current) return;
-    initialLocationStarted.current = true;
-
-    let navigationType = "navigate";
-
-    try {
-      navigationType =
-        performance.getEntriesByType("navigation")[0]?.type || "navigate";
-    } catch {
-      // Use the session state when the navigation type is unavailable.
-    }
-
-    if (navigationType !== "reload" && restoreSessionWeather()) {
-      return;
-    }
-
-    useMyLocation();
-
-    // Run once when the dashboard mounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restoreSessionWeather]);
+  /* ---------- Derived values ---------- */
 
   const current = weather?.current;
   const todayDate = current?.time?.slice(0, 10);
   const todayIndex = weather?.daily?.time?.indexOf(todayDate) ?? -1;
 
-  const todayRain =
-    todayIndex >= 0
-      ? weather?.daily?.precipitation_probability_max?.[todayIndex] ?? 0
-      : 0;
+  const todayRain = todayIndex >= 0 ? weather?.daily?.precipitation_probability_max?.[todayIndex] ?? 0 : 0;
+  const todayHigh = todayIndex >= 0 ? weather?.daily?.temperature_2m_max?.[todayIndex] : null;
+  const todayLow = todayIndex >= 0 ? weather?.daily?.temperature_2m_min?.[todayIndex] : null;
 
-  const todayPrecipitation =
+  const precipitation =
     todayIndex >= 0
-      ? weather?.daily?.precipitation_sum?.[todayIndex] ??
-        current?.precipitation ??
-        0
+      ? weather?.daily?.precipitation_sum?.[todayIndex] ?? current?.precipitation ?? 0
       : current?.precipitation ?? 0;
 
-  const advice = current
-    ? getAdvice(
-        current.temperature_2m,
-        todayRain,
-        current.weather_code
-      )
-    : null;
+  const advice = current ? getAdvice(current.temperature_2m, todayRain, current.weather_code) : null;
+  const outfitItems = current ? getOutfitItems(current.temperature_2m, todayRain, current.weather_code) : [];
+  const theme = getTheme(current);
+  const outfitClimate = getOutfitClimate(current, todayRain);
 
-  const visibleDays =
-    weather?.daily?.time
-      ?.filter((day) => day >= (todayDate ?? ""))
-      .slice(0, 3) ?? [];
+  const visibleDays = weather?.daily?.time?.filter((date) => date >= (todayDate || "")).slice(0, 5) || [];
+
+  const hour = current?.time ? Number(current.time.slice(11, 13)) : null;
+  const greeting = hour === null ? "Hello" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  const animatedTemp = useCountUp(current ? Math.round(current.temperature_2m) : NaN);
+  const typedAnswer = useTypewriter(aiAnswer);
+
+  /* ---------- Outfit ideas + AI ---------- */
+
+  async function fetchOutfitIdeas(gender = selectedGender) {
+    if (!current) {
+      setOutfitError("Weather data is not available yet.");
+      return;
+    }
+
+    const outfitId = ++outfitRequest.current;
+
+    setOutfitLoading(true);
+    setOutfitError("");
+    setOutfitRecommendations([]);
+    setSelectedGender(gender);
+    writeSession({ gender });
+
+    try {
+      const params = new URLSearchParams({ climate: outfitClimate, gender });
+      // Real-person outfit photos (Unsplash) from the new /api/explore route.
+      const response = await fetch(`/api/explore?${params}`, { method: "GET", cache: "no-store" });
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error || "Unable to load outfit photos.");
+
+      const products = Array.isArray(data.products)
+        ? data.products.filter((product) => typeof product.image === "string" && product.image.trim().length > 0)
+        : [];
+
+      const uniqueProducts = Array.from(new Map(products.map((product) => [product.image, product])).values());
+
+      if (uniqueProducts.length === 0) {
+        throw new Error(`No outfit photos were found for ${gender.toLowerCase()}. Please try again.`);
+      }
+
+      if (outfitId === outfitRequest.current) setOutfitRecommendations(uniqueProducts);
+    } catch (err) {
+      if (outfitId === outfitRequest.current) setOutfitError(err.message || "Unable to load outfit recommendations.");
+    } finally {
+      if (outfitId === outfitRequest.current) setOutfitLoading(false);
+    }
+  }
+
+  // Recommendations load by themselves as soon as the weather is known (and when the climate changes).
+  const hasWeather = Boolean(weather?.current);
+  useEffect(() => {
+    if (!hasWeather) return;
+    fetchOutfitIdeas(selectedGender);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasWeather, outfitClimate]);
+
+  function openOutfitIdeas() {
+    setShowOutfitIdeas(true);
+    if (outfitRecommendations.length === 0 && !outfitLoading) fetchOutfitIdeas(selectedGender);
+  }
 
   async function askAI(event) {
     event.preventDefault();
@@ -763,95 +872,65 @@ export default function Dashboard() {
     setAiAnswer("");
 
     try {
-      const dailyForecast = weather.daily.time.map((date, index) => ({
+      const forecast = weather.daily.time.map((date, index) => ({
         date,
-        weekday: formatWeekday(date),
-        maxTemperature:
-          weather.daily.temperature_2m_max?.[index] ?? null,
-        minTemperature:
-          weather.daily.temperature_2m_min?.[index] ?? null,
-        condition:
-          weatherLabels[weather.daily.weather_code?.[index]] ?? "Unknown",
+        weekday: formatDay(date),
+        maxTemperature: weather.daily.temperature_2m_max?.[index] ?? null,
+        minTemperature: weather.daily.temperature_2m_min?.[index] ?? null,
+        condition: WEATHER[weather.daily.weather_code?.[index]] || "Unknown",
         weatherCode: weather.daily.weather_code?.[index] ?? null,
-        rainProbability:
-          weather.daily.precipitation_probability_max?.[index] ?? null,
-        precipitationMm:
-          weather.daily.precipitation_sum?.[index] ?? null,
+        rainProbability: weather.daily.precipitation_probability_max?.[index] ?? null,
+        precipitationMm: weather.daily.precipitation_sum?.[index] ?? null,
       }));
-
-      const currentDate = weather.current.time.slice(0, 10);
-      const [year, month, day] = currentDate.split("-").map(Number);
-
-      const yesterday = new Date(
-        Date.UTC(year, month - 1, day - 1)
-      )
-        .toISOString()
-        .slice(0, 10);
 
       let historicalWeather = null;
 
       if (/\byesterday\b/i.test(question) && coordinates) {
         try {
+          const [year, month, day] = current.time.slice(0, 10).split("-").map(Number);
+          const yesterday = new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+
           const params = new URLSearchParams({
             latitude: String(coordinates.latitude),
             longitude: String(coordinates.longitude),
             date: yesterday,
           });
 
-          const response = await fetch(`/api/history?${params}`);
-
-          if (response.ok) {
-            historicalWeather = await response.json();
-          }
-        } catch (historyError) {
-          console.error("Historical weather error:", historyError);
+          const historyResponse = await fetch(`/api/history?${params}`);
+          if (historyResponse.ok) historicalWeather = await historyResponse.json();
+        } catch {
+          // Historical weather is optional.
         }
       }
 
       const response = await fetch("/api/outfit", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           city: location,
           timezone: weather.timezone,
-          currentTime: weather.current.time,
-          temperature: weather.current.temperature_2m,
-          condition:
-            weatherLabels[weather.current.weather_code] || "Unknown",
+          currentTime: current.time,
+          temperature: current.temperature_2m,
+          condition: WEATHER[current.weather_code] || "Unknown",
           rainChance: todayRain,
-          precipitationMm: todayPrecipitation,
+          precipitationMm: precipitation,
           question: question.trim(),
-          forecast: dailyForecast,
+          forecast,
           historicalWeather,
         }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to get an AI answer.");
-      }
-
-      if (!data.answer) {
-        throw new Error("The AI service returned an empty answer.");
-      }
+      if (!response.ok) throw new Error(data.error || "Unable to get an AI answer.");
+      if (!data.answer) throw new Error("The AI service returned an empty answer.");
 
       setAiAnswer(data.answer);
     } catch (err) {
-      setAiError(err.message || "Something went wrong. Please try again.");
+      setAiError(err.message || "Unable to contact the AI assistant.");
     } finally {
       setAiLoading(false);
     }
-  }
-
-  function exploreOutfit() {
-    setShowOutfitIdeas(true);
-  }
-
-  function openForecast(index) {
-    setSelectedForecast(index);
   }
 
   useEffect(() => {
@@ -859,719 +938,503 @@ export default function Dashboard() {
       if (event.key === "Escape") {
         setSelectedForecast(null);
         setShowOutfitIdeas(false);
+        setShowSuggestions(false);
       }
     }
 
     window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-    };
+    return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
-  const outfitCategory = getOutfitCategory(current, todayRain);
-  const currentOutfitImages = outfitImages[outfitCategory];
+  const primaryBtn =
+    "rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:opacity-60";
+
+  /* ---------- Render ---------- */
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-violet-100 via-sky-50 to-pink-100 text-slate-800">
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-8 sm:py-7">
-        {searchOpen && (
-          <form
-            onSubmit={searchWeather}
-            className="relative z-20 mb-6 rounded-2xl border border-violet-200 bg-white/95 p-3 shadow-lg shadow-violet-100"
-          >
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="flex min-w-0 flex-1 items-center gap-3 px-3">
-                <span className="text-xl">📍</span>
+    <main className="relative min-h-screen text-slate-800">
+      <SkyBackground theme={theme} current={current} />
 
-                <input
-                  id="location-search"
-                  value={city}
-                  onFocus={() => setShowSuggestions(true)}
-                  onChange={(event) => {
-                    setCity(event.target.value);
-                    setSelectedPlace(null);
-                    setError("");
-                    setShowSuggestions(true);
-                  }}
-                  placeholder="Search any city or location worldwide"
-                  aria-label="Search location"
-                  autoComplete="off"
-                  className="w-full min-w-0 py-3 outline-none"
-                />
 
-                {searchingPlaces && (
-                  <span className="text-xs text-slate-400">
-                    Searching…
-                  </span>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 font-semibold text-white shadow-md transition hover:from-violet-700 hover:to-indigo-700 disabled:opacity-60"
-              >
-                {loading ? "Checking…" : "Update weather →"}
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
+        {/* Location search (part of the page, not a second menu) */}
+        <div className="relative z-30 mb-6 flex flex-col gap-2 rounded-2xl border border-white/60 bg-white/80 p-2 shadow-xl shadow-slate-900/10 backdrop-blur-xl sm:flex-row sm:items-center">
+          <form onSubmit={searchWeather} ref={searchBoxRef} className="relative min-w-0 flex-1">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm transition focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100">
+              <span className="text-slate-400">🔍</span>
+              <input
+                value={city}
+                onFocus={() => setShowSuggestions(true)}
+                onChange={(event) => {
+                  ++requestVersion.current;
+                  setCity(event.target.value);
+                  setSelectedPlace(null);
+                  setError("");
+                  setShowSuggestions(true);
+                }}
+                placeholder="Search any city, town or area"
+                aria-label="Search location"
+                autoComplete="off"
+                className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-slate-400"
+              />
+              {searchingPlaces && <span className="ww-blink text-xs text-indigo-600">Searching…</span>}
+              <button type="submit" disabled={loading} className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:opacity-60">
+                Go
               </button>
             </div>
 
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute left-3 right-3 top-full mt-2 max-h-72 overflow-y-auto rounded-2xl border border-violet-100 bg-white p-2 shadow-xl">
+              <div className="ww-pop absolute left-0 right-0 top-full z-50 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
                 {suggestions.map((place, index) => (
                   <button
                     key={`${place.latitude}-${place.longitude}-${index}`}
                     type="button"
                     onClick={() => choosePlace(place)}
-                    className="flex w-full items-start gap-3 rounded-xl px-4 py-3 text-left transition hover:bg-violet-50"
+                    className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50"
                   >
-                    <span>📍</span>
+                    <span className="mt-0.5">📍</span>
                     <span>
-                      <span className="block font-semibold">
-                        {place.name}
-                      </span>
-                      <span className="block text-sm text-slate-500">
-                        {[place.admin1, place.country]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </span>
+                      <span className="block text-sm font-semibold text-slate-900">{place.name}</span>
+                      <span className="block text-xs text-slate-500">{[place.admin1, place.country].filter(Boolean).join(", ")}</span>
                     </span>
                   </button>
                 ))}
               </div>
             )}
-
-            {showSuggestions &&
-              city.trim().length >= 2 &&
-              !searchingPlaces &&
-              suggestions.length === 0 && (
-                <p className="px-4 pt-3 text-sm text-slate-500">
-                  No suggestions found. You can still submit the location.
-                </p>
-              )}
           </form>
-        )}
+
+          <button
+            type="button"
+            onClick={getLiveLocation}
+            disabled={loading}
+            className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-60"
+          >
+            {loading ? <span className="ww-blink">Locating…</span> : "📍 Use live location"}
+          </button>
+        </div>
 
         {error && (
-          <p
-            role="alert"
-            className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700 shadow-sm"
-          >
-            {error}
-          </p>
+          <div role="alert" className="ww-pop mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            <span>⚠️ {error}</span>
+            {!loading && !weather && (
+              <button type="button" onClick={getLiveLocation} className="font-bold underline">
+                Try live location again
+              </button>
+            )}
+          </div>
         )}
 
-        <section className="relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-violet-600 to-fuchsia-600 p-6 text-white shadow-xl shadow-violet-200 sm:p-8">
-          <div className="pointer-events-none absolute -right-12 -top-16 h-64 w-64 rounded-full bg-sky-300/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-pink-300/20 blur-3xl" />
-
-          <div className="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[.2em] text-violet-100">
-                Weather meets wardrobe
-              </p>
-
-              <h1 className="mt-3 max-w-2xl text-3xl font-extrabold leading-tight sm:text-4xl">
-                Feel ready for whatever the sky brings.
-              </h1>
-
-              <p className="mt-3 max-w-xl text-sm leading-6 text-violet-100">
-                Your local forecast, outfit ideas and AI stylist — together
-                in one simple dashboard.
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchOpen((open) => !open);
-                    setError("");
-                  }}
-                  className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 shadow-md transition hover:-translate-y-0.5 hover:bg-indigo-50"
-                >
-                  <span>⌕</span>
-                  {searchOpen ? "Close city search" : "Find a city"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={useMyLocation}
-                  disabled={loading}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/40 bg-white/15 px-4 py-2.5 text-sm font-bold text-white shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/25 disabled:opacity-60"
-                >
-                  <span>◎</span>
-                  {loading ? "Getting location…" : "Use my location"}
-                </button>
+        {loading && !weather && (
+          <div className="ww-pop space-y-5">
+            <div className="rounded-3xl bg-slate-900 p-8 text-center text-white shadow-xl">
+              <div className="ww-float text-5xl">🌤️</div>
+              <p className="mt-4 text-lg font-bold">Getting your weather…</p>
+              <p className="mt-1 text-sm text-white/70">Waiting for location permission or weather data.</p>
+              <div className="mx-auto mt-5 h-1.5 max-w-xs overflow-hidden rounded-full bg-white/20">
+                <div className="ww-indeterminate h-full w-1/3 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500" />
               </div>
             </div>
-
-            <div className="self-start rounded-2xl border border-white/20 bg-white/15 p-5 text-center shadow-lg backdrop-blur-md sm:self-auto">
-              <span className="text-5xl">
-                {current ? getWeatherIcon(current.weather_code) : "🌤️"}
-              </span>
-
-              <p className="mt-2 max-w-56 text-sm font-semibold">
-                {loading
-                  ? "Checking weather…"
-                  : location || "Waiting for your location"}
-              </p>
+            <div className="grid gap-5 lg:grid-cols-3">
+              <div className="ww-skeleton h-64 rounded-3xl lg:col-span-2" />
+              <div className="ww-skeleton h-64 rounded-3xl" />
             </div>
-          </div>
-        </section>
-
-        {loading && !weather && (
-          <div
-            role="status"
-            className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-violet-50 p-10 text-center shadow-sm"
-          >
-            <span className="animate-pulse text-4xl">🌦️</span>
-            <p className="mt-3 font-semibold text-slate-600">
-              Finding your weather…
-            </p>
-            <p className="mt-1 text-sm text-slate-400">
-              Your dashboard will be ready in a moment.
-            </p>
           </div>
         )}
 
         {weather && current && advice && (
-          <>
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-700">
-                  Live conditions
-                </p>
-                <h2 className="mt-1 text-xl font-extrabold sm:text-2xl">
-                  {location}
-                </h2>
-              </div>
-              <p className="text-xs text-slate-500 sm:text-sm">
-                Updated from Open-Meteo
-              </p>
-            </div>
-
-            <div className="grid items-stretch gap-5 xl:grid-cols-[1.05fr_.95fr]">
-              <article className="rounded-3xl border border-sky-200 bg-gradient-to-br from-white via-sky-50 to-cyan-100 p-5 shadow-lg shadow-sky-100 transition duration-300 hover:shadow-xl sm:p-6">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-widest text-sky-800">
-                    Current conditions
-                  </p>
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
-                    ● Live
-                  </span>
-                </div>
-
-                <div className="mt-4 flex items-center gap-4">
-                  <span className="text-5xl sm:text-6xl">
-                    {getWeatherIcon(current.weather_code)}
-                  </span>
-                  <div>
-                    <p className="text-5xl font-extrabold tracking-tight text-slate-900">
-                      {Math.round(current.temperature_2m)}°
-                      <span className="text-2xl text-slate-400">C</span>
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-slate-500">
-                      {weatherLabels[current.weather_code] || "Current weather"}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Feels like {Math.round(current.apparent_temperature)}°C
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid grid-cols-2 gap-2 border-t border-sky-200 pt-4 sm:grid-cols-4 sm:gap-3">
-                  <div className="rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 p-3">
-                    <span>💧</span>
-                    <p className="mt-1 text-xs text-slate-600">Humidity</p>
-                    <p className="mt-1 text-sm font-bold sm:text-base">
-                      {current.relative_humidity_2m}%
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 p-3">
-                    <span>🌧️</span>
-                    <p className="mt-1 text-xs text-slate-600">Rain chance</p>
-                    <p className="mt-1 text-sm font-bold sm:text-base">
-                      {todayRain}%
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-gradient-to-br from-teal-100 to-emerald-100 p-3">
-                    <span>💦</span>
-                    <p className="mt-1 text-xs text-slate-600">
-                      Precipitation
-                    </p>
-                    <p className="mt-1 text-sm font-bold sm:text-base">
-                      {Number(todayPrecipitation).toFixed(1)} mm
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-gradient-to-br from-orange-100 to-amber-100 p-3">
-                    <span>💨</span>
-                    <p className="mt-1 text-xs text-slate-600">Wind</p>
-                    <p className="mt-1 text-sm font-bold sm:text-base">
-                      {current.wind_speed_10m}
-                      <span className="text-xs font-medium"> km/h</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 border-t border-sky-200 pt-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-800">
-                      Next 3 days
-                    </h3>
-                    <span className="text-xs text-slate-500">
-                      Tap a day for details
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    {visibleDays.map((date) => {
-                      const index = weather.daily.time.indexOf(date);
-                      const max = weather.daily.temperature_2m_max[index];
-                      const min = weather.daily.temperature_2m_min[index];
-                      const code = weather.daily.weather_code[index];
-                      const rain =
-                        weather.daily.precipitation_probability_max?.[index];
-                      const precipitation =
-                        weather.daily.precipitation_sum?.[index];
-
-                      return (
-                        <button
-                          key={date}
-                          type="button"
-                          onClick={() => openForecast(index)}
-                          aria-label={`View forecast for ${formatWeekday(date)}`}
-                          className="w-full min-w-0 rounded-xl border border-sky-100 bg-white/80 px-2 py-3 text-center transition duration-200 hover:-translate-y-1 hover:border-violet-300 hover:bg-violet-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-violet-400"
-                        >
-                          <p className="truncate text-xs font-bold text-slate-600 sm:text-sm">
-                            {formatWeekday(date)}
-                          </p>
-                          <p className="my-2 text-2xl">
-                            {getWeatherIcon(code)}
-                          </p>
-                          <p className="text-sm font-extrabold">
-                            {Math.round(max)}°
-                            <span className="ml-1 font-medium text-slate-400">
-                              {Math.round(min)}°
-                            </span>
-                          </p>
-                          <p className="mt-2 text-[10px] text-slate-500 sm:text-xs">
-                            🌧 {rain ?? "—"}
-                            {rain != null ? "%" : ""}
-                          </p>
-                          <p className="mt-1 text-[10px] text-slate-500">
-                            💦{" "}
-                            {precipitation != null
-                              ? `${Number(precipitation).toFixed(1)} mm`
-                              : "—"}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </article>
-
-              <article className="rounded-3xl border border-fuchsia-200 bg-gradient-to-br from-white via-fuchsia-50 to-pink-100 p-5 shadow-lg shadow-pink-100 transition duration-300 hover:shadow-xl sm:p-6">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-fuchsia-700">
-                    Today's outfit
-                  </p>
-                  <span className="text-3xl">{advice.emoji}</span>
-                </div>
-
-                <h2 className="mt-3 text-2xl font-extrabold">
-                  {advice.title}
-                </h2>
-
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Outfit suggestions based on the weather in {location}.
-                </p>
-
-                <div className="mt-5 rounded-2xl border border-pink-100 bg-gradient-to-r from-pink-100 to-rose-100 p-4">
-                  <p className="font-bold">👚 What to wear</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {advice.clothes}
-                  </p>
-                </div>
-
-                <div className="mt-3 rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-100 to-teal-100 p-4">
-                  <p className="font-bold">🌿 Activity</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {advice.activity}
-                  </p>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-violet-100 bg-gradient-to-br from-white to-violet-50 p-4">
-                  <p className="text-sm font-bold text-slate-800">
-                    Today's weather summary
-                  </p>
-
-                  <div className="mt-3 flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Temperature</span>
-                    <span className="font-semibold">
-                      {Math.round(current.temperature_2m)}°C
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Conditions</span>
-                    <span className="font-semibold">
-                      {weatherLabels[current.weather_code] || "Unknown"}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Chance of rain</span>
-                    <span className="font-semibold">{todayRain}%</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Precipitation</span>
-                    <span className="font-semibold">
-                      {Number(todayPrecipitation).toFixed(1)} mm
-                    </span>
-                  </div>
-                </div>
-
-                <p className="mt-3 text-xs text-slate-400">
-                  General recommendations based on current weather.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={exploreOutfit}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-600 via-violet-600 to-indigo-600 px-5 py-3 font-semibold text-white shadow-md shadow-violet-200 transition duration-200 hover:-translate-y-0.5 hover:from-fuchsia-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2"
-                >
-                  Explore outfit ideas <span aria-hidden="true">→</span>
-                </button>
-              </article>
-            </div>
-
-            {selectedForecast !== null && (
-              <div
-                className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
-                onClick={() => setSelectedForecast(null)}
-              >
-                <section
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="forecast-dialog-title"
-                  className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-violet-100 bg-gradient-to-br from-white via-violet-50 to-sky-50 p-6 shadow-2xl"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedForecast(null)}
-                    aria-label="Close forecast details"
-                    className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 text-2xl text-violet-700 transition hover:bg-violet-200"
-                  >
-                    ×
-                  </button>
-
-                  {(() => {
-                    const date = weather.daily.time[selectedForecast];
-                    const max =
-                      weather.daily.temperature_2m_max[selectedForecast];
-                    const min =
-                      weather.daily.temperature_2m_min[selectedForecast];
-                    const code =
-                      weather.daily.weather_code[selectedForecast];
-                    const rain =
-                      weather.daily.precipitation_probability_max?.[
-                        selectedForecast
-                      ] ?? 0;
-                    const precipitation =
-                      weather.daily.precipitation_sum?.[selectedForecast] ?? 0;
-                    const dayAdvice = getAdvice(max, rain, code);
-
-                    return (
-                      <>
-                        <p className="text-xs font-bold uppercase tracking-widest text-violet-700">
-                          Daily forecast details
-                        </p>
-                        <h2
-                          id="forecast-dialog-title"
-                          className="mt-2 pr-10 text-2xl font-extrabold text-slate-900"
-                        >
-                          {formatWeekday(date)}
-                        </h2>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {formatDate(date)} · {location}
-                        </p>
-
-                        <div className="mt-5 rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 text-white shadow-lg shadow-violet-200">
-                          <div className="flex items-center gap-4">
-                            <span className="text-5xl">
-                              {getWeatherIcon(code)}
-                            </span>
-                            <div>
-                              <p className="text-4xl font-extrabold">
-                                {Math.round(max)}°
-                              </p>
-                              <p className="mt-1 text-sm text-indigo-100">
-                                High {Math.round(max)}° · Low{" "}
-                                {Math.round(min)}°C
-                              </p>
-                              <p className="mt-1 text-sm font-medium">
-                                {weatherLabels[code] || "Unknown"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                          <div className="rounded-xl bg-sky-100 p-4">
-                            <p className="text-xs text-slate-500">
-                              🌧 Rain probability
-                            </p>
-                            <p className="mt-2 text-xl font-bold">{rain}%</p>
-                          </div>
-                          <div className="rounded-xl bg-teal-100 p-4">
-                            <p className="text-xs text-slate-500">
-                              💦 Precipitation
-                            </p>
-                            <p className="mt-2 text-xl font-bold">
-                              {Number(precipitation).toFixed(1)} mm
-                            </p>
-                          </div>
-                          <div className="col-span-2 rounded-xl bg-amber-100 p-4">
-                            <p className="text-xs text-slate-500">
-                              🌡 Temperature range
-                            </p>
-                            <p className="mt-2 text-xl font-bold">
-                              {Math.round(min)}°–{Math.round(max)}°C
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 rounded-2xl border border-violet-100 bg-white/80 p-4">
-                          <p className="text-xs font-bold uppercase tracking-wider text-violet-700">
-                            Outfit suggestion
-                          </p>
-                          <h3 className="mt-2 text-lg font-extrabold">
-                            <span className="mr-2">{dayAdvice.emoji}</span>
-                            {dayAdvice.title}
-                          </h3>
-                          <p className="mt-2 text-sm leading-6 text-slate-600">
-                            {dayAdvice.clothes}
-                          </p>
-                          <div className="mt-3 rounded-xl bg-emerald-100 p-3">
-                            <p className="text-sm font-semibold text-emerald-800">
-                              Activity
-                            </p>
-                            <p className="mt-1 text-sm leading-6 text-slate-600">
-                              {dayAdvice.activity}
-                            </p>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedForecast(null)}
-                          className="mt-5 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 font-semibold text-white transition hover:from-indigo-700 hover:to-violet-700"
-                        >
-                          Close details
-                        </button>
-                      </>
-                    );
-                  })()}
-                </section>
-              </div>
-            )}
-
+          <div>
+            {/* 1. Weather */}
             <section
-              id="ai-assistant"
-              className="mt-7 scroll-mt-24 overflow-hidden rounded-3xl border border-violet-200 bg-gradient-to-br from-white via-violet-50 to-pink-50 shadow-lg shadow-violet-100"
+              className="ww-reveal px-1 pb-6 pt-2 text-white sm:pt-6"
+              style={{ "--i": 0, textShadow: "0 2px 18px rgba(15,23,42,0.35)" }}
             >
-              <div className="bg-gradient-to-r from-indigo-700 via-violet-600 to-fuchsia-600 p-5 text-white sm:p-7">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-3xl shadow-inner">
-                    ✦
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-100">
-                      Your personal stylist
-                    </p>
-                    <h2 className="mt-1 text-xl font-extrabold sm:text-2xl">
-                      Ask your AI assistant
-                    </h2>
-                    <p className="mt-1 text-sm text-violet-100">
-                      Get outfit and weather advice for your plans.
-                    </p>
-                  </div>
+              <p className="text-sm font-semibold text-white/85">{greeting}</p>
+              <h1 className="mt-1 max-w-3xl text-2xl font-extrabold leading-tight sm:text-3xl">{location}</h1>
+
+              <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-2">
+                <p className="text-8xl font-black leading-none tabular-nums sm:text-[8rem]">
+                  {animatedTemp}
+                  <span className="align-top text-3xl font-bold text-white/70 sm:text-4xl">°C</span>
+                </p>
+                <div className="pb-2">
+                  <p className="flex items-center gap-2 text-xl font-bold">
+                    <span className="ww-float text-3xl">{weatherIcon(current.weather_code)}</span>
+                    {WEATHER[current.weather_code] || "Current weather"}
+                  </p>
+                  <p className="mt-1 text-sm text-white/80">
+                    Feels like {Math.round(current.apparent_temperature)}°C
+                    {todayHigh != null && todayLow != null && ` · High ${Math.round(todayHigh)}° / Low ${Math.round(todayLow)}°`}
+                    {` · Humidity ${current.relative_humidity_2m}% · Wind ${current.wind_speed_10m} km/h · Rain ${todayRain}%`}
+                  </p>
                 </div>
               </div>
+            </section>
 
-              <div className="p-5 sm:p-7">
-                <p className="mb-3 text-sm font-bold text-slate-700">
-                  Try asking
-                </p>
+            {/* 2. Forecast strip */}
+            <div
+              className="ww-reveal mb-8 grid grid-cols-5 divide-x divide-white/25 overflow-hidden rounded-2xl border border-white/30 bg-white/15 text-white shadow-lg backdrop-blur-xl"
+              style={{ "--i": 1 }}
+            >
+              {visibleDays.map((date, order) => {
+                const index = weather.daily.time.indexOf(date);
+                const max = weather.daily.temperature_2m_max[index];
+                const min = weather.daily.temperature_2m_min[index];
+                const code = weather.daily.weather_code[index];
+                const rain = weather.daily.precipitation_probability_max?.[index];
 
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "What should I wear today?",
-                    "Should I carry an umbrella?",
-                    "What about tomorrow?",
-                    "What is the weather the day after tomorrow?",
-                    "What should I wear next Monday?",
-                    "What was the weather yesterday?",
-                    "Suggest footwear for today's climate",
-                  ].map((suggestion) => (
+                return (
+                  <button
+                    key={date}
+                    type="button"
+                    onClick={() => setSelectedForecast(index)}
+                    className="group px-2 py-4 text-center transition hover:bg-white/15"
+                  >
+                    <span className="block text-xs font-bold uppercase tracking-wider text-white/80">{order === 0 ? "Today" : formatShortDay(date)}</span>
+                    <span className="my-1.5 block text-3xl transition group-hover:scale-110">{weatherIcon(code)}</span>
+                    <span className="block text-sm font-bold">{Math.round(max)}°<span className="ml-1 font-medium text-white/60">{Math.round(min)}°</span></span>
+                    <span className="mt-0.5 block text-[11px] font-medium text-sky-100">{rain != null ? `${rain}% rain` : ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 3. Outfit recommendations: photos are the content */}
+            <section id="styling-guide" className="ww-reveal scroll-mt-24 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-xl shadow-slate-900/10 backdrop-blur-xl sm:p-8" style={{ "--i": 2 }}>
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                <div className="max-w-2xl">
+                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">
+                    Picked for {Math.round(current.temperature_2m)}°C · {WEATHER[current.weather_code] || "today"}
+                  </p>
+                  <h2 className="mt-1 text-2xl font-extrabold text-slate-900 sm:text-3xl">{advice.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{advice.clothes}</p>
+                </div>
+
+                <div className="inline-flex shrink-0 rounded-full bg-slate-100 p-1">
+                  {["Women", "Men"].map((g) => (
                     <button
-                      key={suggestion}
+                      key={g}
                       type="button"
-                      onClick={() => setQuestion(suggestion)}
-                      className="rounded-full border border-violet-200 bg-gradient-to-r from-violet-100 to-pink-100 px-3 py-2 text-left text-xs text-violet-800 transition hover:-translate-y-0.5 hover:from-violet-200 hover:to-pink-200 sm:text-sm"
+                      disabled={outfitLoading}
+                      onClick={() => fetchOutfitIdeas(g)}
+                      className={`rounded-full px-5 py-2 text-sm font-bold transition disabled:cursor-wait ${
+                        selectedGender === g ? "bg-slate-900 text-white shadow" : "text-slate-600 hover:text-slate-900"
+                      }`}
                     >
-                      {suggestion}
+                      {g}
                     </button>
                   ))}
                 </div>
+              </div>
 
-                <form onSubmit={askAI} className="mt-5">
-                  <label
-                    htmlFor="ai-question"
-                    className="mb-2 block text-sm font-bold"
-                  >
-                    What would you like to know?
-                  </label>
+              <p className="mt-4 text-sm text-slate-500">
+                Think: {outfitItems.map(([, label]) => label.toLowerCase()).join(" · ")}
+              </p>
 
-                  <textarea
-                    id="ai-question"
-                    value={question}
-                    onChange={(event) => setQuestion(event.target.value)}
-                    placeholder="For example: What should I wear to college next Friday?"
-                    maxLength={500}
-                    required
-                    rows={3}
-                    className="w-full rounded-xl border border-violet-200 bg-white p-4 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
-                  />
-
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-slate-400">
-                      Uses the current weather and available forecast.
-                    </p>
-                    <button
-                      type="submit"
-                      disabled={aiLoading || !question.trim()}
-                      className="rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 font-semibold text-white shadow-md shadow-violet-200 transition hover:-translate-y-0.5 hover:from-violet-700 hover:to-fuchsia-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {aiLoading ? "Thinking…" : "Ask AI ✨"}
-                    </button>
+              <div className="mt-6">
+                {outfitLoading && (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
+                    {Array.from({ length: 4 }, (_, i) => (
+                      <div key={i} className="ww-skeleton aspect-[3/4] rounded-2xl" />
+                    ))}
                   </div>
-                </form>
-
-                {aiError && (
-                  <p
-                    role="alert"
-                    className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"
-                  >
-                    {aiError}
-                  </p>
                 )}
 
-                {aiAnswer && (
-                  <div className="mt-5 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-100 to-pink-100 p-5">
-                    <h3 className="font-bold text-violet-950">
-                      Your recommendation
-                    </h3>
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                      {aiAnswer}
-                    </p>
-                    <p className="mt-3 text-xs text-slate-500">
-                      AI suggestions are general guidance. Use your own
-                      judgment.
-                    </p>
+                {!outfitLoading && outfitError && (
+                  <div role="alert" className="ww-pop rounded-2xl bg-red-50 p-5 text-sm text-red-700">
+                    <p>{outfitError}</p>
+                    <button type="button" onClick={() => fetchOutfitIdeas(selectedGender)} className={`${primaryBtn} mt-3`}>
+                      Try again
+                    </button>
+                  </div>
+                )}
+
+                {!outfitLoading && !outfitError && outfitRecommendations.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
+                    {outfitRecommendations.slice(0, 4).map((item, index) => (
+                      <ImageTile key={`${selectedGender}-${item.id || item.image}-${index}`} item={item} gender={selectedGender} index={index} />
+                    ))}
                   </div>
                 )}
               </div>
-            </section>
-          </>
-        )}
 
-        {!weather && !loading && (
-          <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-white via-sky-50 to-violet-100 p-8 text-center shadow-md">
-            <p className="text-4xl">🌦️</p>
-            <h2 className="mt-3 text-xl font-bold">
-              Weather is ready when you are
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              Allow location access or search for a location to see its
-              weather.
-            </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 font-semibold text-white shadow-md transition hover:-translate-y-0.5"
-              >
-                Find a city
-              </button>
-              <button
-                type="button"
-                onClick={useMyLocation}
-                className="rounded-xl border border-violet-200 bg-white px-5 py-3 font-semibold text-violet-700 transition hover:bg-violet-50"
-              >
-                Use my location
-              </button>
-            </div>
+              <ExploreButton onClick={openOutfitIdeas} />
+            </section>
+
+            {/* 4. Ask */}
+            <section className="ww-reveal mt-8 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-xl shadow-slate-900/10 backdrop-blur-xl sm:p-8" style={{ "--i": 3 }}>
+              <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Ask about your outfit</p>
+
+              <form onSubmit={askAI} className="mt-3">
+                <label htmlFor="ai-question" className="sr-only">What would you like to know?</label>
+                <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2 transition focus-within:border-indigo-500">
+                  <input
+                    id="ai-question"
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    placeholder="For example: What should I wear to college tomorrow?"
+                    maxLength={500}
+                    required
+                    className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-slate-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={aiLoading || !question.trim()}
+                    className="shrink-0 rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {aiLoading ? "Thinking…" : "Ask"}
+                  </button>
+                </div>
+              </form>
+
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                {["What should I wear today?", "Should I carry an umbrella?", "What about tomorrow?"].map((text) => (
+                  <button
+                    key={text}
+                    type="button"
+                    onClick={() => setQuestion(text)}
+                    className="font-medium text-slate-500 underline-offset-4 transition hover:text-indigo-700 hover:underline"
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+
+              {aiLoading && (
+                <div className="ww-pop mt-4 flex items-center gap-1.5">
+                  <span className="ww-typing h-2 w-2 rounded-full bg-indigo-500" />
+                  <span className="ww-typing h-2 w-2 rounded-full bg-indigo-500" style={{ animationDelay: "0.15s" }} />
+                  <span className="ww-typing h-2 w-2 rounded-full bg-indigo-500" style={{ animationDelay: "0.3s" }} />
+                </div>
+              )}
+
+              {aiError && <p className="ww-pop mt-4 text-sm font-medium text-red-600">{aiError}</p>}
+
+              {aiAnswer && (
+                <p className="ww-pop mt-4 whitespace-pre-wrap border-l-2 border-indigo-400 pl-4 text-sm leading-7 text-slate-700">
+                  {typedAnswer}
+                  {typedAnswer.length < aiAnswer.length && <span className="ww-caret">|</span>}
+                </p>
+              )}
+            </section>
+
+            <footer className="pb-4 pt-6 text-center text-xs text-white/70">
+              Weather data by Open-Meteo · Photos from Unsplash
+            </footer>
           </div>
         )}
       </div>
 
-      {showOutfitIdeas && (
-        <div
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"
-          onClick={() => setShowOutfitIdeas(false)}
-        >
+      {/* Forecast modal */}
+      {selectedForecast !== null && weather && (
+        <div className="ww-fade fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setSelectedForecast(null)}>
           <section
             role="dialog"
             aria-modal="true"
-            aria-label="Weather-based outfit ideas"
-            className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-violet-100 bg-gradient-to-br from-white via-violet-50 to-pink-50 p-5 shadow-2xl sm:p-7"
+            className="ww-pop relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedForecast(null)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xl text-slate-600 transition hover:bg-slate-200"
+              aria-label="Close forecast"
+            >
+              ×
+            </button>
+
+            {(() => {
+              const date = weather.daily.time[selectedForecast];
+              const max = weather.daily.temperature_2m_max[selectedForecast];
+              const min = weather.daily.temperature_2m_min[selectedForecast];
+              const code = weather.daily.weather_code[selectedForecast];
+              const rain = weather.daily.precipitation_probability_max?.[selectedForecast] ?? 0;
+              const amount = weather.daily.precipitation_sum?.[selectedForecast] ?? 0;
+              const dayAdvice = getAdvice(max, rain, code);
+              const dayItems = getOutfitItems(max, rain, code);
+
+              return (
+                <>
+                  <h2 className="pr-10 text-2xl font-extrabold text-slate-900">{formatDay(date)}</h2>
+                  <p className="mt-1 text-sm text-slate-500">{formatDate(date)} · {location}</p>
+
+                  <div className="relative mt-5 overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-700 to-violet-600 p-5 text-white">
+                    <span className="ww-float absolute right-4 top-3 text-6xl">{weatherIcon(code)}</span>
+                    <p className="text-5xl font-black">{Math.round(max)}°</p>
+                    <p className="mt-1 text-sm text-white/80">High {Math.round(max)}° · Low {Math.round(min)}°C</p>
+                    <p className="mt-1 font-semibold">{WEATHER[code] || "Unknown"}</p>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-slate-200 p-3 text-center">
+                      <p className="text-2xl">🌧️</p>
+                      <p className="mt-1 text-lg font-extrabold text-slate-900">{Math.round(rain)}%</p>
+                      <p className="text-xs font-semibold text-slate-500">Rain chance</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 p-3 text-center">
+                      <p className="text-2xl">💦</p>
+                      <p className="mt-1 text-lg font-extrabold text-slate-900">{Number(amount).toFixed(1)}<span className="ml-0.5 text-xs text-slate-500">mm</span></p>
+                      <p className="text-xs font-semibold text-slate-500">Precipitation</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+                    <h3 className="font-bold text-slate-900">{dayAdvice.title}</h3>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {dayItems.map(([icon, label], i) => (
+                        <span key={`${label}-${i}`} className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                          <span>{icon}</span>{label}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-slate-700">🌿 {dayAdvice.activity}</p>
+                  </div>
+                </>
+              );
+            })()}
+
+            <button type="button" onClick={() => setSelectedForecast(null)} className={`${primaryBtn} mt-5 w-full`}>
+              Close
+            </button>
+          </section>
+        </div>
+      )}
+
+      {/* Outfit ideas modal */}
+      {showOutfitIdeas && (
+        <div className="ww-fade fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setShowOutfitIdeas(false)}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Weather-based outfit recommendations"
+            className="ww-pop relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-7"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setShowOutfitIdeas(false)}
-              aria-label="Close outfit ideas"
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-2xl text-violet-700 transition hover:bg-violet-200"
+              aria-label="Close"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xl text-slate-600 transition hover:bg-slate-200"
             >
               ×
             </button>
 
-            <div className="mb-5 pr-12">
-              <p className="text-xs font-bold uppercase tracking-[.18em] text-violet-700">
-                WeatherWear
-              </p>
-              <h2 className="mt-2 text-2xl font-extrabold text-slate-900">
-                Outfit inspiration
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {location} ·{" "}
-                {current ? getWeatherIcon(current.weather_code) : "🌤️"}{" "}
-                {current ? `${Math.round(current.temperature_2m)}°C` : ""}
-              </p>
-            </div>
+            <h2 className="pr-10 text-2xl font-extrabold text-slate-900">What should you wear? ✨</h2>
 
-            <div className="grid grid-cols-2 gap-3 sm:gap-5">
-              {currentOutfitImages.map((outfit, index) => (
-                <div
-                  key={`${outfitCategory}-${index}`}
-                  className="overflow-hidden rounded-2xl border border-white bg-white shadow-md transition duration-300 hover:-translate-y-1 hover:shadow-xl"
-                >
-                  <img
-                    src={outfit.src}
-                    alt={outfit.alt}
-                    loading="lazy"
-                    className="h-52 w-full object-cover transition duration-500 hover:scale-105 sm:h-72"
-                  />
-                </div>
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-800">
+              {current ? `${weatherIcon(current.weather_code)} ${Math.round(current.temperature_2m)}°C · ${WEATHER[current.weather_code] || "Current weather"}` : "Weather-based outfit recommendations"}
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {outfitItems.map(([icon, label], i) => (
+                <span key={`${label}-${i}`} className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700">
+                  <span className="text-lg">{icon}</span>{label}
+                </span>
               ))}
             </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {[["Women", "👗"], ["Men", "👔"]].map(([g, emoji]) => (
+                <button
+                  key={g}
+                  type="button"
+                  disabled={outfitLoading}
+                  onClick={() => fetchOutfitIdeas(g)}
+                  className={`rounded-xl border-2 px-4 py-3 text-sm font-bold transition ${
+                    selectedGender === g
+                      ? "border-indigo-600 bg-indigo-50 text-indigo-800 shadow-sm"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-indigo-300 hover:bg-slate-50"
+                  } disabled:cursor-wait disabled:opacity-60`}
+                >
+                  {emoji} {g}
+                </button>
+              ))}
+            </div>
+
+            {outfitLoading && (
+              <div className="mt-5">
+                <p className="ww-blink mb-3 text-center text-sm font-medium text-indigo-700">
+                  Finding {selectedGender.toLowerCase()}'s outfits for {outfitClimate.toLowerCase()} weather…
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <div key={i} className="ww-skeleton aspect-[3/4] rounded-2xl" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!outfitLoading && outfitError && (
+              <div role="alert" className="ww-pop mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <p>{outfitError}</p>
+                <button type="button" onClick={() => fetchOutfitIdeas(selectedGender)} className={`${primaryBtn} mt-3`}>
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {!outfitLoading && !outfitError && outfitRecommendations.length > 0 && (
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                {outfitRecommendations.map((item, index) => (
+                  <ImageTile key={`${selectedGender}-${item.id || item.image}-${index}`} item={item} gender={selectedGender} index={index} />
+                ))}
+              </div>
+            )}
           </section>
         </div>
       )}
+
+      <style jsx global>{`
+        .ww-reveal { opacity: 0; animation: ww-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 90ms); }
+        .ww-pop { opacity: 0; animation: ww-pop 0.4s cubic-bezier(0.2, 1.2, 0.4, 1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+        .ww-fade { animation: ww-fade 0.25s ease both; }
+
+        .ww-float { display: inline-block; animation: ww-float 3.2s ease-in-out infinite; }
+        .ww-spin { animation: ww-spin 3s linear infinite; }
+        .ww-live-dot { animation: ww-live 1.6s ease-in-out infinite; }
+        .ww-blink { animation: ww-blink 1.4s ease-in-out infinite; }
+        .ww-indeterminate { animation: ww-indet 1.4s ease-in-out infinite; }
+        .ww-typing { animation: ww-typing 1s ease-in-out infinite; }
+        .ww-caret { animation: ww-blink 0.8s steps(2) infinite; color: #4f46e5; }
+
+        .ww-lift { transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease; }
+        .ww-lift:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(30, 41, 59, 0.2); }
+
+        .ww-fx { position: absolute; inset: 0; overflow: hidden; transition: opacity 1.2s ease; }
+        .ww-sunburst { position: absolute; top: -260px; right: -260px; width: 640px; height: 640px; border-radius: 50%; background: repeating-conic-gradient(rgba(255,255,255,0.4) 0 8deg, transparent 8deg 24deg); -webkit-mask: radial-gradient(circle, #000 12%, transparent 68%); mask: radial-gradient(circle, #000 12%, transparent 68%); animation: ww-spin 50s linear infinite; }
+        .ww-sunburst::after { content: ""; position: absolute; inset: 40%; border-radius: 50%; background: #fde047; box-shadow: 0 0 90px 45px rgba(253, 224, 71, 0.7); }
+        .ww-moon { position: absolute; top: 8%; right: 12%; width: 84px; height: 84px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #e0e7ff 60%, #c7d2fe); box-shadow: 0 0 60px 20px rgba(199, 210, 254, 0.5); animation: ww-float 6s ease-in-out infinite; }
+        .ww-star { position: absolute; border-radius: 50%; background: #fff; animation: ww-twinkle 2.6s ease-in-out infinite; }
+        .ww-bgcloud { position: absolute; left: 0; width: 220px; height: 64px; border-radius: 64px; background: rgba(255,255,255,0.7); filter: drop-shadow(0 10px 14px rgba(30,58,138,0.15)); animation: ww-cross linear infinite; }
+        .ww-bgcloud::before, .ww-bgcloud::after { content: ""; position: absolute; border-radius: 50%; background: inherit; }
+        .ww-bgcloud::before { width: 90px; height: 90px; left: 30px; top: -44px; }
+        .ww-bgcloud::after { width: 66px; height: 66px; right: 32px; top: -30px; }
+        .ww-drop { position: absolute; top: -40px; width: 2px; height: 22px; border-radius: 2px; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.8)); animation: ww-fall linear infinite; }
+        .ww-flake { position: absolute; top: -30px; color: #fff; opacity: 0.9; animation: ww-snow linear infinite; }
+        .ww-flash { position: absolute; inset: 0; background: #fff; opacity: 0; animation: ww-flash 7s linear infinite; }
+
+        .ww-skeleton { background: linear-gradient(100deg, #e2e8f0 30%, #f1f5f9 50%, #e2e8f0 70%); background-size: 250% 100%; animation: ww-shimmer 1.4s linear infinite; }
+
+        @keyframes ww-rise { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+        @keyframes ww-pop { from { opacity: 0; transform: scale(0.94) translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes ww-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes ww-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes ww-spin { to { transform: rotate(360deg); } }
+        @keyframes ww-live { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); } 50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } }
+        @keyframes ww-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+        @keyframes ww-indet { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+        @keyframes ww-typing { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-5px); opacity: 1; } }
+        @keyframes ww-twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+        @keyframes ww-cross { from { transform: translateX(-300px); } to { transform: translateX(calc(100vw + 100px)); } }
+        @keyframes ww-fall { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(110vh); opacity: 0; } }
+        @keyframes ww-snow { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 10% { opacity: 0.9; } 50% { transform: translate(24px, 55vh) rotate(180deg); } 100% { transform: translate(-16px, 110vh) rotate(360deg); opacity: 0; } }
+        @keyframes ww-flash { 0%, 90%, 100% { opacity: 0; } 91% { opacity: 0.55; } 92% { opacity: 0; } 94% { opacity: 0.4; } 95% { opacity: 0; } }
+        @keyframes ww-shimmer { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ww-reveal, .ww-pop, .ww-fade { animation: none; opacity: 1; }
+          .ww-float, .ww-spin, .ww-live-dot, .ww-blink, .ww-indeterminate, .ww-typing, .ww-caret, .ww-skeleton, .ww-sunburst, .ww-moon, .ww-star, .ww-bgcloud, .ww-drop, .ww-flake, .ww-flash { animation: none; }
+        }
+      `}</style>
     </main>
   );
 }
