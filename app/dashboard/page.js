@@ -393,6 +393,12 @@ export default function Dashboard() {
   const [outfitLoading, setOutfitLoading] = useState(false);
   const [outfitError, setOutfitError] = useState("");
 
+  // Outfit photos inside the 5-day forecast popup (separate from the main section).
+  const [modalGender, setModalGender] = useState("Women");
+  const [modalOutfits, setModalOutfits] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState("");
+
   const [question, setQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState("");
   const [aiError, setAiError] = useState("");
@@ -403,6 +409,7 @@ export default function Dashboard() {
   const autocompleteVersion = useRef(0);
   const searchBoxRef = useRef(null);
   const outfitRequest = useRef(0);
+  const modalRequest = useRef(0);
 
   /* ---------- Session helpers ---------- */
 
@@ -933,6 +940,42 @@ export default function Dashboard() {
     }
   }
 
+  // Load outfit photos for the day opened in the forecast popup.
+  useEffect(() => {
+    if (selectedForecast === null || !weather) return;
+
+    const max = weather.daily.temperature_2m_max[selectedForecast];
+    const code = weather.daily.weather_code[selectedForecast];
+    const rain = weather.daily.precipitation_probability_max?.[selectedForecast] ?? 0;
+    const climate = getOutfitClimate({ temperature_2m: max, weather_code: code }, rain);
+    const id = ++modalRequest.current;
+
+    setModalLoading(true);
+    setModalError("");
+    setModalOutfits([]);
+
+    (async () => {
+      try {
+        const params = new URLSearchParams({ climate, gender: modalGender });
+        const response = await fetch(`/api/explore?${params}`, { method: "GET", cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to load outfit photos.");
+
+        const products = Array.isArray(data.products)
+          ? data.products.filter((p) => typeof p.image === "string" && p.image.trim().length > 0)
+          : [];
+        const unique = Array.from(new Map(products.map((p) => [p.image, p])).values());
+        if (unique.length === 0) throw new Error("No outfit photos found. Please try again.");
+
+        if (id === modalRequest.current) setModalOutfits(unique);
+      } catch (err) {
+        if (id === modalRequest.current) setModalError(err.message || "Unable to load outfit photos.");
+      } finally {
+        if (id === modalRequest.current) setModalLoading(false);
+      }
+    })();
+  }, [selectedForecast, modalGender, weather]);
+
   useEffect(() => {
     function handleEscape(event) {
       if (event.key === "Escape") {
@@ -1065,6 +1108,7 @@ export default function Dashboard() {
                     Feels like {Math.round(current.apparent_temperature)}°C
                     {todayHigh != null && todayLow != null && ` · High ${Math.round(todayHigh)}° / Low ${Math.round(todayLow)}°`}
                     {` · Humidity ${current.relative_humidity_2m}% · Wind ${current.wind_speed_10m} km/h · Rain ${todayRain}%`}
+                    {` · Precipitation ${Number(precipitation).toFixed(1)} mm`}
                   </p>
                 </div>
               </div>
@@ -1086,7 +1130,10 @@ export default function Dashboard() {
                   <button
                     key={date}
                     type="button"
-                    onClick={() => setSelectedForecast(index)}
+                    onClick={() => {
+                      setModalGender(selectedGender);
+                      setSelectedForecast(index);
+                    }}
                     className="group px-2 py-4 text-center transition hover:bg-white/15"
                   >
                     <span className="block text-xs font-bold uppercase tracking-wider text-white/80">{order === 0 ? "Today" : formatShortDay(date)}</span>
@@ -1163,10 +1210,12 @@ export default function Dashboard() {
             {/* 4. Ask */}
             <section className="ww-reveal mt-8 rounded-3xl border border-white/60 bg-white/90 p-5 shadow-xl shadow-slate-900/10 backdrop-blur-xl sm:p-8" style={{ "--i": 3 }}>
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Ask about your outfit</p>
+              <h2 className="mt-1 text-xl font-extrabold text-slate-900 sm:text-2xl">Not sure what to wear?</h2>
+              <p className="mt-1 text-sm text-slate-500">Ask anything about today or the days ahead and get an answer based on your forecast.</p>
 
-              <form onSubmit={askAI} className="mt-3">
+              <form onSubmit={askAI} className="mt-5">
                 <label htmlFor="ai-question" className="sr-only">What would you like to know?</label>
-                <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-2 transition focus-within:border-indigo-500">
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 pl-4 shadow-sm transition focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-100">
                   <input
                     id="ai-question"
                     value={question}
@@ -1174,25 +1223,25 @@ export default function Dashboard() {
                     placeholder="For example: What should I wear to college tomorrow?"
                     maxLength={500}
                     required
-                    className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-slate-400"
+                    className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-slate-400"
                   />
                   <button
                     type="submit"
                     disabled={aiLoading || !question.trim()}
-                    className="shrink-0 rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                    className="shrink-0 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
                   >
                     {aiLoading ? "Thinking…" : "Ask"}
                   </button>
                 </div>
               </form>
 
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {["What should I wear today?", "Should I carry an umbrella?", "What about tomorrow?"].map((text) => (
                   <button
                     key={text}
                     type="button"
                     onClick={() => setQuestion(text)}
-                    className="font-medium text-slate-500 underline-offset-4 transition hover:text-indigo-700 hover:underline"
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
                   >
                     {text}
                   </button>
@@ -1200,20 +1249,27 @@ export default function Dashboard() {
               </div>
 
               {aiLoading && (
-                <div className="ww-pop mt-4 flex items-center gap-1.5">
+                <div className="ww-pop mt-5 inline-flex items-center gap-1.5 rounded-2xl bg-slate-100 px-4 py-3">
                   <span className="ww-typing h-2 w-2 rounded-full bg-indigo-500" />
                   <span className="ww-typing h-2 w-2 rounded-full bg-indigo-500" style={{ animationDelay: "0.15s" }} />
                   <span className="ww-typing h-2 w-2 rounded-full bg-indigo-500" style={{ animationDelay: "0.3s" }} />
                 </div>
               )}
 
-              {aiError && <p className="ww-pop mt-4 text-sm font-medium text-red-600">{aiError}</p>}
+              {aiError && (
+                <div role="alert" className="ww-pop mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+                  {aiError}
+                </div>
+              )}
 
               {aiAnswer && (
-                <p className="ww-pop mt-4 whitespace-pre-wrap border-l-2 border-indigo-400 pl-4 text-sm leading-7 text-slate-700">
-                  {typedAnswer}
-                  {typedAnswer.length < aiAnswer.length && <span className="ww-caret">|</span>}
-                </p>
+                <div className="ww-pop mt-5 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-5 ring-1 ring-indigo-100">
+                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Your answer</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                    {typedAnswer}
+                    {typedAnswer.length < aiAnswer.length && <span className="ww-caret">|</span>}
+                  </p>
+                </div>
               )}
             </section>
 
@@ -1287,6 +1343,50 @@ export default function Dashboard() {
                       ))}
                     </div>
                     <p className="mt-3 text-sm leading-6 text-slate-700">🌿 {dayAdvice.activity}</p>
+                  </div>
+
+                  {/* Outfit photos for this day */}
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-slate-900">Outfit ideas</h3>
+                      <div className="inline-flex rounded-full bg-slate-100 p-1">
+                        {["Women", "Men"].map((g) => (
+                          <button
+                            key={g}
+                            type="button"
+                            disabled={modalLoading}
+                            onClick={() => setModalGender(g)}
+                            className={`rounded-full px-4 py-1.5 text-xs font-bold transition disabled:cursor-wait ${
+                              modalGender === g ? "bg-slate-900 text-white shadow" : "text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            {g}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      {modalLoading && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {Array.from({ length: 4 }, (_, i) => (
+                            <div key={i} className="ww-skeleton aspect-[3/4] rounded-2xl" />
+                          ))}
+                        </div>
+                      )}
+
+                      {!modalLoading && modalError && (
+                        <div role="alert" className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">{modalError}</div>
+                      )}
+
+                      {!modalLoading && !modalError && modalOutfits.length > 0 && (
+                        <div className="grid grid-cols-2 gap-3">
+                          {modalOutfits.slice(0, 4).map((item, index) => (
+                            <ImageTile key={`modal-${modalGender}-${item.id || item.image}-${index}`} item={item} gender={modalGender} index={index} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               );
