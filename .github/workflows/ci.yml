@@ -1,5 +1,4 @@
-
-name: WeatherWear CI
+name: WeatherWear CI/CD
 
 on:
   push:
@@ -9,9 +8,19 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  AWS_REGION: eu-north-1
+  IMAGE_NAME: ghcr.io/rizwana200/weatherwear
+  EC2_INSTANCE_ID: i-09242bdf1917edfdf
+
 jobs:
-  build:
-    name: Build Docker Image
+  build-and-deploy:
+    name: Build and Deploy WeatherWear
     runs-on: ubuntu-latest
 
     steps:
@@ -21,12 +30,184 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build WeatherWear image
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build WeatherWear Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: false
-          tags: weatherwear:${{ github.sha }}
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ghcr.io/rizwana200/weatherwear:${{ github.sha }}
+            ghcr.io/rizwana200/weatherwear:latest
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Configure AWS credentials using OIDC
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Store server-side secrets in Parameter Store
+        if: github.event_name == 'push'
+        env:
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          REEF_API_KEY: ${{ secrets.REEF_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          put_secret() {
+            local name="$1"
+            local value="$2"
+
+            if [ -z "$value" ]; then
+              echo "Required GitHub secret is missing: $name"
+              exit 1
+            fi
+
+            aws ssm put-parameter \
+              --name "/weatherwear/$name" \
+              --type SecureString \
+              --value "$value" \
+              --overwrite \
+              --region "$AWS_REGION" \
+              --no-cli-pager >/dev/null
+          }
+
+          put_secret "ghcr-read-token" "$GHCR_READ_TOKEN"
+          put_secret "deepseek-api-key" "$DEEPSEEK_API_KEY"
+          put_secret "reef-api-key" "$REEF_API_KEY"
+          put_secret "unsplash-access-key" "$UNSPLASH_ACCESS_KEY"
+
+          echo "All four server-side secrets stored in Parameter Store."
+
+      - name: Deploy to EC2 through Systems Manager
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          REMOTE_COMMAND=$(cat <<REMOTE
+          set -eu
+
+          REGION="eu-north-1"
+          IMAGE="ghcr.io/rizwana200/weatherwear:${IMAGE_TAG}"
+
+          GHCR_TOKEN=\$(aws ssm get-parameter \
+            --name "/weatherwear/ghcr-read-token" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text \
+            --region "\$REGION")
+
+          DEEPSEEK_API_KEY=\$(aws ssm get-parameter \
+            --name "/weatherwear/deepseek-api-key" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text \
+            --region "\$REGION")
+
+          REEF_API_KEY=\$(aws ssm get-parameter \
+            --name "/weatherwear/reef-api-key" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text \
+            --region "\$REGION")
+
+          UNSPLASH_ACCESS_KEY=\$(aws ssm get-parameter \
+            --name "/weatherwear/unsplash-access-key" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text \
+            --region "\$REGION")
+
+          printf '%s' "\$GHCR_TOKEN" | sudo docker login ghcr.io \
+            --username "Rizwana200" \
+            --password-stdin
+
+          sudo docker pull "\$IMAGE"
+
+          sudo docker stop weatherwear || true
+          sudo docker rm weatherwear || true
+
+          sudo docker run -d \
+            --name weatherwear \
+            --restart unless-stopped \
+            -p 80:3000 \
+            -e "DEEPSEEK_API_KEY=\$DEEPSEEK_API_KEY" \
+            -e "REEF_API_KEY=\$REEF_API_KEY" \
+            -e "UNSPLASH_ACCESS_KEY=\$UNSPLASH_ACCESS_KEY" \
+            "\$IMAGE"
+
+          unset GHCR_TOKEN DEEPSEEK_API_KEY REEF_API_KEY UNSPLASH_ACCESS_KEY
+
+          sudo docker image prune -f
+
+          echo "WeatherWear deployment completed."
+          REMOTE
+          )
+
+          PARAMETERS=$(jq -n --arg cmd "$REMOTE_COMMAND" \
+            '{commands: [$cmd]}')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy WeatherWear $IMAGE_TAG" \
+            --parameters "$PARAMETERS" \
+            --query "Command.CommandId" \
+            --output text \
+            --region "$AWS_REGION")
+
+          echo "SSM command submitted: $COMMAND_ID"
+
+          for attempt in $(seq 1 30); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$EC2_INSTANCE_ID" \
+              --region "$AWS_REGION" \
+              --query "Status" \
+              --output text 2>/dev/null || true)
+
+            case "$STATUS" in
+              Success)
+                echo "WeatherWear deployed successfully."
+                aws ssm get-command-invocation \
+                  --command-id "$COMMAND_ID" \
+                  --instance-id "$EC2_INSTANCE_ID" \
+                  --region "$AWS_REGION" \
+                  --query "StandardOutputContent" \
+                  --output text
+                exit 0
+                ;;
+              Failed|Cancelled|TimedOut)
+                echo "Deployment failed with status: $STATUS"
+                aws ssm get-command-invocation \
+                  --command-id "$COMMAND_ID" \
+                  --instance-id "$EC2_INSTANCE_ID" \
+                  --region "$AWS_REGION" \
+                  --query "{Output:StandardOutputContent,Error:StandardErrorContent}" \
+                  --output json
+                exit 1
+                ;;
+            esac
+
+            sleep 10
+          done
+
+          echo "Timed out waiting for deployment command."
+          exit 1
