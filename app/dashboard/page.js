@@ -82,6 +82,66 @@ function getAdvice(temperature, rainChance, code) {
   return { title, clothes, activity };
 }
 
+// Suggests things to do, matched to the weather. tone: "good" | "ok" | "skip"
+function getActivities(temperature, rainChance, code, wind = 0) {
+  const raining = rainChance >= 50 || RAIN_CODES.includes(code);
+  const storm = [95, 96, 99].includes(code);
+  const snow = SNOW_CODES.includes(code);
+  const items = [];
+  const add = (icon, title, note, tone) => items.push({ icon, title, note, tone });
+
+  if (storm) {
+    add("🏠", "Stay indoors", "Thunderstorms are possible, so avoid open areas.", "good");
+    add("🎬", "Movie or a good book", "A cosy day for it.", "good");
+    add("🍳", "Cook something at home", "Try a new recipe.", "good");
+    add("🏃", "Outdoor exercise", "Wait until the storm has passed.", "skip");
+  } else if (raining || snow) {
+    add("🏋️", "Gym or home workout", "Keep your exercise dry.", "good");
+    add("☕", "Café, museum or mall", "Plenty to do indoors.", "good");
+    add("🎮", "Games or movies at home", "A relaxed plan for the day.", "good");
+    add("☔", "Short errands", "Carry an umbrella and allow extra time.", "ok");
+    add("🚶", "Long outdoor walk", "Better on a drier day.", "skip");
+    add("⚽", "Outdoor sports", "The ground is likely to be wet.", "skip");
+  } else if (temperature >= 35) {
+    add("🏊", "Swimming", "The best way to cool off.", "good");
+    add("🛍️", "Mall or indoor plans", "Stay in the air conditioning.", "good");
+    add("🌇", "Evening walk", "Wait until after sunset.", "ok");
+    add("🍉", "Cold drinks and fruit", "Stay hydrated.", "good");
+    add("🏃", "Midday outdoor exercise", "Too hot. Choose early morning instead.", "skip");
+  } else if (temperature >= 28) {
+    add("🌅", "Early morning walk or run", "Cooler and quieter.", "good");
+    add("🏊", "Swimming", "A nice way to beat the heat.", "good");
+    add("🌇", "Evening stroll", "Comfortable after sunset.", "good");
+    add("⚽", "Outdoor sports", "Take water and breaks in the shade.", "ok");
+    add("🥾", "Long afternoon hike", "Midday sun can be tiring.", "skip");
+  } else if (temperature >= 12) {
+    add("🚶", "Walk in the park", "Comfortable conditions.", "good");
+    add(
+      wind >= 30 ? "🏃" : "🚴",
+      wind >= 30 ? "Running" : "Cycling",
+      wind >= 30 ? "It's windy, so pick a sheltered route." : "A good day to ride.",
+      wind >= 30 ? "ok" : "good"
+    );
+    add("🧺", "Picnic or outdoor café", "A nice day to be outside.", wind >= 30 ? "ok" : "good");
+    add("⚽", "Outdoor sports", "Good conditions to play.", "good");
+    add("📸", "Photography walk", "Soft light and mild air.", "good");
+  } else {
+    add("☕", "Hot drink at a café", "Warm up and relax.", "good");
+    add("🏋️", "Gym or indoor workout", "Stay active without the cold.", "good");
+    add("🚶", "Brisk walk", "Dress warmly and keep moving.", "ok");
+    add("🎬", "Movies or board games", "A cosy plan for the day.", "good");
+    add("🏕️", "Long time outdoors", "Limit it unless you're well wrapped up.", "skip");
+  }
+
+  return items;
+}
+
+const TONE_STYLE = {
+  good: { label: "Good idea", cls: "bg-emerald-100 text-emerald-800" },
+  ok: { label: "Okay", cls: "bg-amber-100 text-amber-800" },
+  skip: { label: "Skip it", cls: "bg-rose-100 text-rose-800" },
+};
+
 const CATEGORY_DOT = {
   Top: "bg-rose-400",
   Bottom: "bg-indigo-400",
@@ -348,16 +408,16 @@ function SkyBackground({ theme, current }) {
   );
 }
 
-function ExploreButton({ onClick }) {
+function ExploreButton({ onClick, title = "Explore outfit ideas", subtitle = "Browse looks matched to today's weather", spacing = "mt-6" }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group mt-6 flex w-full items-center justify-between rounded-2xl bg-slate-900 px-6 py-4 text-left text-white shadow-lg shadow-slate-900/25 ring-1 ring-slate-900 transition duration-300 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/30 hover:ring-indigo-700 active:translate-y-0 active:scale-[0.99]"
+      className={`group ${spacing} flex w-full items-center justify-between rounded-2xl bg-slate-900 px-6 py-4 text-left text-white shadow-lg shadow-slate-900/25 ring-1 ring-slate-900 transition duration-300 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/30 hover:ring-indigo-700 active:translate-y-0 active:scale-[0.99]`}
     >
       <span className="leading-tight">
-        <span className="block text-base font-bold">Explore outfit ideas</span>
-        <span className="mt-0.5 block text-xs font-medium text-white/65">Browse looks matched to today's weather</span>
+        <span className="block text-base font-bold">{title}</span>
+        <span className="mt-0.5 block text-xs font-medium text-white/65">{subtitle}</span>
       </span>
       <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-900 transition duration-300 group-hover:translate-x-1">
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -388,6 +448,7 @@ export default function Dashboard() {
   const [selectedForecast, setSelectedForecast] = useState(null);
 
   const [showOutfitIdeas, setShowOutfitIdeas] = useState(false);
+  const [showActivities, setShowActivities] = useState(false);
   const [selectedGender, setSelectedGender] = useState("Women");
   const [outfitRecommendations, setOutfitRecommendations] = useState([]);
   const [outfitLoading, setOutfitLoading] = useState(false);
@@ -803,6 +864,7 @@ export default function Dashboard() {
 
   const advice = current ? getAdvice(current.temperature_2m, todayRain, current.weather_code) : null;
   const outfitItems = current ? getOutfitItems(current.temperature_2m, todayRain, current.weather_code) : [];
+  const activities = current ? getActivities(current.temperature_2m, todayRain, current.weather_code, current.wind_speed_10m) : [];
   const theme = getTheme(current);
   const outfitClimate = getOutfitClimate(current, todayRain);
 
@@ -981,6 +1043,7 @@ export default function Dashboard() {
       if (event.key === "Escape") {
         setSelectedForecast(null);
         setShowOutfitIdeas(false);
+        setShowActivities(false);
         setShowSuggestions(false);
       }
     }
@@ -1205,6 +1268,12 @@ export default function Dashboard() {
               </div>
 
               <ExploreButton onClick={openOutfitIdeas} />
+              <ExploreButton
+                onClick={() => setShowActivities(true)}
+                title="Explore activities"
+                subtitle="See what to do in today's weather"
+                spacing="mt-3"
+              />
             </section>
 
             {/* 4. Ask */}
@@ -1307,6 +1376,7 @@ export default function Dashboard() {
               const amount = weather.daily.precipitation_sum?.[selectedForecast] ?? 0;
               const dayAdvice = getAdvice(max, rain, code);
               const dayItems = getOutfitItems(max, rain, code);
+              const dayActivities = getActivities(max, rain, code);
 
               return (
                 <>
@@ -1343,6 +1413,17 @@ export default function Dashboard() {
                       ))}
                     </div>
                     <p className="mt-3 text-sm leading-6 text-slate-700">🌿 {dayAdvice.activity}</p>
+                    <div className="mt-3 space-y-2">
+                      {dayActivities.slice(0, 4).map((a, i) => (
+                        <div key={`${a.title}-${i}`} className="flex items-center gap-2 text-sm text-slate-700">
+                          <span className="text-lg">{a.icon}</span>
+                          <span className="font-semibold">{a.title}</span>
+                          <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${TONE_STYLE[a.tone].cls}`}>
+                            {TONE_STYLE[a.tone].label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Outfit photos for this day */}
@@ -1479,6 +1560,53 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+          </section>
+        </div>
+      )}
+
+      {/* Activities modal */}
+      {showActivities && current && (
+        <div className="ww-fade fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setShowActivities(false)}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Weather-based activities"
+            className="ww-pop relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-7"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowActivities(false)}
+              aria-label="Close"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xl text-slate-600 transition hover:bg-slate-200"
+            >
+              ×
+            </button>
+
+            <h2 className="pr-10 text-2xl font-extrabold text-slate-900">What to do today 🌿</h2>
+
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-800">
+              {`${weatherIcon(current.weather_code)} ${Math.round(current.temperature_2m)}°C · ${WEATHER[current.weather_code] || "Current weather"}`}
+            </p>
+
+            <p className="mt-4 text-sm leading-6 text-slate-600">{advice?.activity}</p>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {activities.map((a, i) => (
+                <div key={`${a.title}-${i}`} className="ww-pop flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" style={{ "--i": i }}>
+                  <span className="text-3xl">{a.icon}</span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-slate-900">{a.title}</p>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${TONE_STYLE[a.tone].cls}`}>
+                        {TONE_STYLE[a.tone].label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{a.note}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
         </div>
       )}

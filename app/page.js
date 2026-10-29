@@ -2,31 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
-const APP_ROUTE = "/dashboard"; // where signed-in users land after the intro
-
-// Signed out -> login. Signed in -> the page they were trying to reach (saved
-// by the login page), otherwise the app's main page.
-async function destination() {
-  let signedIn = false;
-  try {
-    const { data } = await createClient().auth.getUser();
-    signedIn = !!data.user;
-  } catch {
-    /* treat as signed out */
-  }
-  if (!signedIn) return "/login";
-
-  let next = null;
-  try {
-    next = window.sessionStorage.getItem("ww:next");
-    window.sessionStorage.removeItem("ww:next");
-  } catch {
-    /* ignore */
-  }
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : APP_ROUTE;
-}
+const APP_ROUTE = "/dashboard"; // where users land after the intro
 
 // Fixed values (no Math.random) so server and client render identical HTML.
 // Add 4 photos of a real person wearing the outfit to public/outfits/:
@@ -103,42 +80,20 @@ function Word({ text, className, startDelay = 0 }) {
 export default function Home() {
   const router = useRouter();
   const mainRef = useRef(null);
-  const [ready, setReady] = useState(false); // true once we know the user is signed in
   const [progress, setProgress] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [real, setReal] = useState(null); // { idx, temp } once today's weather is known
   const settledRef = useRef(false); // true when the weather request has finished (or failed)
   const redirectRef = useRef(null);
 
-  const goToApp = async () => {
+  const goToApp = () => {
     safeStorage("set", "ww:seen", "1");
     setLeaving(true);
-    const path = await destination();
-    redirectRef.current = setTimeout(() => router.replace(path), 600);
+    redirectRef.current = setTimeout(() => router.replace(APP_ROUTE), 600);
   };
-
-  // 0) Login comes first: signed-out visitors go to /login and never see the intro.
-  useEffect(() => {
-    let cancelled = false;
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (cancelled) return;
-        if (data.user) setReady(true);
-        else router.replace("/login");
-      })
-      .catch(() => {
-        if (!cancelled) router.replace("/login");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
 
   // 1) Get today's real weather while the intro plays. Fails quietly.
   useEffect(() => {
-    if (!ready) return undefined;
-
     let cancelled = false;
     const controller = new AbortController();
     const giveUp = setTimeout(() => {
@@ -185,14 +140,12 @@ export default function Home() {
       controller.abort();
       clearTimeout(giveUp);
     };
-  }, [ready]);
+  }, []);
 
   // 2) Loading animation. If the intro was already seen this session, skip to the app.
   useEffect(() => {
-    if (!ready) return undefined;
-
     if (safeStorage("get", "ww:seen")) {
-      destination().then((path) => router.replace(path));
+      router.replace(APP_ROUTE);
       return undefined;
     }
 
@@ -212,7 +165,7 @@ export default function Home() {
       clearTimeout(redirectRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, ready]);
+  }, [router]);
 
   // Light mouse / touch tilt: updates CSS variables only.
   const handleMove = (e) => {
@@ -238,9 +191,6 @@ export default function Home() {
       : progress >= HOLD_AT && !settledRef.current
       ? "Getting your local weather…"
       : "Checking today’s weather…";
-
-  // Blank sky while we check who is signed in (no flash of the intro before the redirect).
-  if (!ready) return <main className="min-h-screen bg-sky-300" />;
 
   return (
     <main
