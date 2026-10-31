@@ -337,7 +337,9 @@ WeatherWear is deployed on AWS EC2 using Docker.
 
 ## 🚀 Future Improvements
 
-- User authentication and personalized clothing recommendations.
+- **User accounts with Supabase:** Integrate Supabase to let users sign in and securely store their own outfits, along with their real life photos.
+- **AI virtual try-on:** Design a try-on model that uses each user's body photo and saved outfits to generate how those outfits would look on their own body.
+- Personalized clothing recommendations based on each user's wardrobe and style.
 - More detailed weather-based outfit predictions.
 - Improved product ranking and filtering.
 - Additional weather-based activities.
