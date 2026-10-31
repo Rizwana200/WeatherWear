@@ -16,7 +16,7 @@ It combines live weather information, AI-generated outfit suggestions, and real 
 - Search and select different cities.
 - Displays temperature, feels-like temperature, humidity, precipitation, and wind speed.
 - Provides weather conditions and forecast information.
-- Displays a 3-day weather forecast.
+- Displays a 5-day weather forecast.
 
 ### 👗 AI-Powered Outfit Recommendations
 - Generates clothing recommendations based on weather conditions.
