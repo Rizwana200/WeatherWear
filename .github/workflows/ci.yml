@@ -1,17 +1,32 @@
+
 name: WeatherWear CI/CD
 
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
 
 permissions:
   contents: read
   packages: write
   id-token: write
+
+concurrency:
+  group: weatherwear-deployment
+  cancel-in-progress: false
 
 env:
   AWS_REGION: eu-north-1
@@ -91,7 +106,7 @@ jobs:
           put_secret "reef-api-key" "$REEF_API_KEY"
           put_secret "unsplash-access-key" "$UNSPLASH_ACCESS_KEY"
 
-          echo "All four server-side secrets stored in Parameter Store."
+          echo "Server-side secrets stored successfully."
 
       - name: Deploy to EC2 through Systems Manager
         if: github.event_name == 'push'
@@ -109,45 +124,38 @@ jobs:
 
           GHCR_TOKEN=\$(aws ssm get-parameter \
             --name "/weatherwear/ghcr-read-token" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text \
-            --region "\$REGION")
+            --with-decryption --query "Parameter.Value" \
+            --output text --region "\$REGION")
 
           DEEPSEEK_API_KEY=\$(aws ssm get-parameter \
             --name "/weatherwear/deepseek-api-key" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text \
-            --region "\$REGION")
+            --with-decryption --query "Parameter.Value" \
+            --output text --region "\$REGION")
 
           REEF_API_KEY=\$(aws ssm get-parameter \
             --name "/weatherwear/reef-api-key" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text \
-            --region "\$REGION")
+            --with-decryption --query "Parameter.Value" \
+            --output text --region "\$REGION")
 
           UNSPLASH_ACCESS_KEY=\$(aws ssm get-parameter \
             --name "/weatherwear/unsplash-access-key" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text \
-            --region "\$REGION")
+            --with-decryption --query "Parameter.Value" \
+            --output text --region "\$REGION")
 
           printf '%s' "\$GHCR_TOKEN" | sudo docker login ghcr.io \
-            --username "Rizwana200" \
-            --password-stdin
+            --username "Rizwana200" --password-stdin
 
           sudo docker pull "\$IMAGE"
 
-          sudo docker stop weatherwear || true
-          sudo docker rm weatherwear || true
+          # Remove any failed or old container.
+          sudo docker rm -f weatherwear 2>/dev/null || true
 
+          # Nginx owns ports 80 and 443.
+          # Docker must only expose the app on localhost:3000.
           sudo docker run -d \
             --name weatherwear \
             --restart unless-stopped \
-            -p 80:3000 \
+            -p 127.0.0.1:3000:3000 \
             -e "DEEPSEEK_API_KEY=\$DEEPSEEK_API_KEY" \
             -e "REEF_API_KEY=\$REEF_API_KEY" \
             -e "UNSPLASH_ACCESS_KEY=\$UNSPLASH_ACCESS_KEY" \
@@ -155,9 +163,34 @@ jobs:
 
           unset GHCR_TOKEN DEEPSEEK_API_KEY REEF_API_KEY UNSPLASH_ACCESS_KEY
 
-          sudo docker image prune -f
+          # Verify that the app starts before reporting success.
+          READY=0
+          for attempt in \$(seq 1 30); do
+            if sudo docker exec weatherwear node -e \
+              "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.status < 500 ? 0 : 1)).catch(()=>process.exit(1))"
+            then
+              READY=1
+              break
+            fi
 
-          echo "WeatherWear deployment completed."
+            if [ "\$(sudo docker inspect -f '{{.State.Running}}' weatherwear 2>/dev/null || echo false)" != "true" ]; then
+              echo "WeatherWear container stopped during startup."
+              sudo docker logs --tail 80 weatherwear
+              exit 1
+            fi
+
+            sleep 5
+          done
+
+          if [ "\$READY" -ne 1 ]; then
+            echo "WeatherWear did not become ready."
+            sudo docker logs --tail 80 weatherwear
+            exit 1
+          fi
+
+          echo "WeatherWear is running successfully."
+
+          sudo docker image prune -f
           REMOTE
           )
 
@@ -175,7 +208,7 @@ jobs:
 
           echo "SSM command submitted: $COMMAND_ID"
 
-          for attempt in $(seq 1 30); do
+          for attempt in $(seq 1 36); do
             STATUS=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "$EC2_INSTANCE_ID" \
@@ -195,7 +228,7 @@ jobs:
                 exit 0
                 ;;
               Failed|Cancelled|TimedOut)
-                echo "Deployment failed with status: $STATUS"
+                echo "Deployment failed: $STATUS"
                 aws ssm get-command-invocation \
                   --command-id "$COMMAND_ID" \
                   --instance-id "$EC2_INSTANCE_ID" \
@@ -209,5 +242,5 @@ jobs:
             sleep 10
           done
 
-          echo "Timed out waiting for deployment command."
+          echo "Timed out waiting for deployment."
           exit 1
